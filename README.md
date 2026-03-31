@@ -19,30 +19,7 @@ Welcome to **IUiverse**, a modern online learning platform designed for IU (Inte
 - **React Router DOM**: Client-side routing
 - **Lucide React**: Icon library
 
-## Project Structure
 
-```
-iuniverse-fe/
-├── src/
-│   ├── components/        # Reusable React components
-│   │   ├── Header.jsx
-│   │   ├── Sidebar.jsx
-│   │   ├── StatCard.jsx
-│   │   └── CourseCard.jsx
-│   ├── pages/             # Page components
-│   │   └── Dashboard.jsx
-│   ├── layouts/           # Layout components
-│   ├── styles/            # CSS and styling
-│   │   └── index.css
-│   ├── utils/             # Utility functions
-│   ├── App.jsx            # Main App component
-│   └── main.jsx           # Entry point
-├── public/                # Static assets
-├── index.html             # HTML template
-├── package.json           # Dependencies
-├── vite.config.js         # Vite configuration
-├── tailwind.config.js     # Tailwind CSS configuration
-└── postcss.config.js      # PostCSS configuration
 ```
 
 ## Getting Started
