@@ -8,12 +8,11 @@ export function MainLayout() {
   const { user } = useAuth();
 
   if (!user) {
-    return <Navigate to="/" replace />;
+    return <Navigate to="/login" replace />;
   }
 
   return (
     <div className="relative flex h-screen overflow-hidden bg-background">
-      {/* Atmospheric Background */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         <div className="blob bg-slate-100 w-96 h-96 top-[-10%] left-[-10%]"></div>
         <div className="blob bg-slate-200 w-[30rem] h-[30rem] bottom-[-20%] right-[-10%] animation-delay-2000"></div>
