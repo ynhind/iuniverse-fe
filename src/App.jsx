@@ -11,6 +11,7 @@ import {
   StudentSchedule,
   StudentGradebook,
 } from "@/pages/student";
+import { CourseCreator } from "@/pages/teacher";
 import { Settings } from "@/pages/Settings";
 import { UserManagement } from "@/pages/UserManagement";
 import { Login } from "@/pages/Login";
@@ -34,6 +35,7 @@ function App() {
               <Route path="/courses/:id" element={<StudentCourseDetail />} />
               <Route path="/schedule" element={<StudentSchedule />} />
               <Route path="/gradebook" element={<StudentGradebook />} />
+              <Route path="/create-course" element={<CourseCreator />} />
               <Route path="/settings" element={<Settings />} />
               <Route path="/users" element={<UserManagement />} />
             </Route>
