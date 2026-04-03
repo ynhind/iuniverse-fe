@@ -4,11 +4,10 @@ import { cn } from "@/lib/utils";
 const Button = React.forwardRef(
   ({ className, variant = "default", size = "default", ...props }, ref) => {
     const baseStyles =
-      "inline-flex items-center justify-center whitespace-nowrap rounded-xl text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 active:scale-[0.98]";
+      "inline-flex items-center justify-center whitespace-nowrap rounded-xl text-sm font-normal ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 active:scale-[0.98]";
 
     const variants = {
-      default:
-        "gradient-primary text-primary-foreground shadow-sm hover:opacity-90",
+      default: "bg-primary text-primary-foreground shadow-sm hover:opacity-90",
       outline:
         "border border-input bg-background hover:bg-muted hover:text-muted-foreground",
       ghost: "hover:bg-muted hover:text-foreground",

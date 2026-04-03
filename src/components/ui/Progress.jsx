@@ -11,7 +11,7 @@ const Progress = React.forwardRef(({ className, value = 0, ...props }, ref) => (
     {...props}
   >
     <div
-      className="h-full w-full flex-1 gradient-primary transition-all"
+      className="h-full w-full flex-1 bg-primary transition-all"
       style={{ width: `${value}%` }}
     />
   </div>

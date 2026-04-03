@@ -5,9 +5,12 @@ import {
   BookOpen,
   Calendar,
   GraduationCap,
+  Users,
+  FileEdit,
+  BarChart3,
+  HelpCircle,
   Settings,
   LogOut,
-  HelpCircle,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
@@ -19,11 +22,42 @@ export function Sidebar() {
     { name: "Dashboard", path: "/", icon: LayoutDashboard },
     { name: "My Courses", path: "/courses", icon: BookOpen },
     { name: "Schedule", path: "/schedule", icon: Calendar },
-    { name: "Grades", path: "/grades", icon: GraduationCap },
+    { name: "Grades", path: "/gradebook", icon: GraduationCap },
   ];
 
+  const adminNav = [
+    { name: "User Management", path: "/users", icon: Users },
+    { name: "Course Creator", path: "/create-course", icon: FileEdit },
+    { name: "Analytics", path: "/analytics", icon: BarChart3 },
+  ];
+
+  const lecturerNav = [
+    { name: "Course Creator", path: "/create-course", icon: FileEdit },
+    { name: "Analytics", path: "/analytics", icon: BarChart3 },
+  ];
+
+  const renderNavItems = (items) => {
+    return items.map((item) => (
+      <NavLink
+        key={item.name}
+        to={item.path}
+        className={({ isActive }) =>
+          cn(
+            "flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-all duration-200",
+            isActive
+              ? "bg-primary text-primary-foreground shadow-md"
+              : "text-muted-foreground hover:bg-black/5 hover:text-foreground",
+          )
+        }
+      >
+        <item.icon className="h-4 w-4" />
+        {item.name}
+      </NavLink>
+    ));
+  };
+
   return (
-    <aside className="relative z-20 m-4 hidden flex-col rounded-[2rem] glass w-[260px] lg:flex h-[calc(100vh-2rem)]">
+    <aside className="relative z-20 m-4 hidden flex-col rounded-[2rem] glass w-[260px] lg:flex">
       <div className="flex h-20 items-center px-8">
         <div className="flex items-center gap-3 font-bold text-primary">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-accent text-white shadow-lg">
@@ -35,37 +69,38 @@ export function Sidebar() {
 
       <div className="flex-1 overflow-y-auto py-4">
         <nav className="grid gap-2 px-4">
-          {mainNav.map((item) => (
-            <NavLink
-              key={item.name}
-              to={item.path}
-              className={({ isActive }) =>
-                cn(
-                  "flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-all duration-200",
-                  isActive
-                    ? "gradient-primary text-primary-foreground shadow-md"
-                    : "text-muted-foreground hover:bg-black/5 hover:text-foreground",
-                )
-              }
-            >
-              <item.icon className="h-4 w-4" />
-              {item.name}
-            </NavLink>
-          ))}
+          {renderNavItems(mainNav)}
+
+          {(user?.role === "Admin" || user?.role === "Lecturer") && (
+            <>
+              <div className="my-4 px-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground/70">
+                Management
+              </div>
+              {user.role === "Admin"
+                ? renderNavItems(adminNav)
+                : renderNavItems(lecturerNav)}
+            </>
+          )}
         </nav>
       </div>
 
       <div className="mt-auto p-4">
         <div className="rounded-2xl bg-black/5 p-2">
           <nav className="grid gap-1">
-            <button className="flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-white/50 hover:text-foreground">
+            <NavLink
+              to="/help"
+              className="flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-white/50 hover:text-foreground"
+            >
               <HelpCircle className="h-4 w-4" />
-              Help
-            </button>
-            <button className="flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-white/50 hover:text-foreground">
+              Help Center
+            </NavLink>
+            <NavLink
+              to="/settings"
+              className="flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-white/50 hover:text-foreground"
+            >
               <Settings className="h-4 w-4" />
               Settings
-            </button>
+            </NavLink>
             <button
               onClick={logout}
               className="flex w-full items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-white/50 hover:text-foreground"

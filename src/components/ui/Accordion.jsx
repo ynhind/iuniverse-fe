@@ -2,8 +2,17 @@ import React, { useState } from "react";
 import { cn } from "@/lib/utils";
 import { ChevronDown } from "lucide-react";
 
-const Accordion = ({ children, type = "single", className, ...props }) => {
-  const [openItems, setOpenItems] = useState({});
+const Accordion = ({
+  children,
+  type = "single",
+  defaultValue = [],
+  className,
+  ...props
+}) => {
+  const initialOpen = Array.isArray(defaultValue)
+    ? defaultValue.reduce((acc, val) => ({ ...acc, [val]: true }), {})
+    : {};
+  const [openItems, setOpenItems] = useState(initialOpen);
 
   const toggleItem = (value) => {
     if (type === "single") {
@@ -21,7 +30,7 @@ const Accordion = ({ children, type = "single", className, ...props }) => {
   };
 
   return (
-    <div className={cn("space-y-2", className)} {...props}>
+    <div className={cn("w-full space-y-4", className)} {...props}>
       {React.Children.map(children, (child) =>
         React.cloneElement(child, { openItems, toggleItem }),
       )}
@@ -37,7 +46,11 @@ const AccordionItem = ({
   className,
 }) => (
   <div
-    className={cn("glass border-none rounded-2xl overflow-hidden", className)}
+    className={cn(
+      "glass border-none shadow-md shadow-slate-200/30 rounded-2xl px-2 overflow-hidden transition-all",
+      openItems?.[value] && "shadow-lg",
+      className,
+    )}
   >
     {React.Children.map(children, (child) =>
       React.cloneElement(child, {
