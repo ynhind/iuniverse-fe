@@ -41,7 +41,8 @@ export function Login() {
     setIsLoading(true);
     setTimeout(() => {
       setIsLoading(false);
-      if (email === "test@iu.edu" && password === "password") {
+      const validAccounts = ["test@iu.edu", "teacher@gmail.com", "admin@gmail.com"];
+      if (validAccounts.includes(email) && password === "root") {
         login(email, password);
         toast({
           title: "Welcome back!",
@@ -52,7 +53,7 @@ export function Login() {
       } else {
         toast({
           title: "Login Failed",
-          description: "Invalid email or password. Try test@iu.edu / password",
+          description: "Invalid email or password. Try test, teacher, or admin account with password 'root'",
           variant: "error",
         });
       }

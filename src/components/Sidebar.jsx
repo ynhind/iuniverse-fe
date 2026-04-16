@@ -26,14 +26,16 @@ export function Sidebar() {
   ];
 
   const adminNav = [
+    { name: "Review Queue", path: "/admin/review", icon: FileEdit },
+    { name: "Announcements", path: "/admin/announcements", icon: BookOpen },
     { name: "User Management", path: "/users", icon: Users },
-    { name: "Course Creator", path: "/create-course", icon: FileEdit },
     { name: "Analytics", path: "/analytics", icon: BarChart3 },
   ];
 
-  const lecturerNav = [
+  const teacherNav = [
+    { name: "My Created Courses", path: "/teacher/courses", icon: BookOpen },
     { name: "Course Creator", path: "/create-course", icon: FileEdit },
-    { name: "Analytics", path: "/analytics", icon: BarChart3 },
+    { name: "Student Submissions", path: "/teacher/submissions", icon: Users },
   ];
 
   const renderNavItems = (items) => {
@@ -69,16 +71,16 @@ export function Sidebar() {
 
       <div className="flex-1 overflow-y-auto py-4">
         <nav className="grid gap-2 px-4">
-          {renderNavItems(mainNav)}
+          {user?.role === "Student" && renderNavItems(mainNav)}
 
-          {(user?.role === "Admin" || user?.role === "Lecturer") && (
+          {(user?.role === "Admin" || user?.role === "Teacher") && (
             <>
               <div className="my-4 px-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground/70">
-                Management
+                {user.role} Dashboard
               </div>
               {user.role === "Admin"
                 ? renderNavItems(adminNav)
-                : renderNavItems(lecturerNav)}
+                : renderNavItems(teacherNav)}
             </>
           )}
         </nav>

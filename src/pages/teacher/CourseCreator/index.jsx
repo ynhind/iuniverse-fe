@@ -1,17 +1,25 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { BasicInfoTab } from "./BasicInfoTab";
 import { CurriculumBuilder } from "./CurriculumBuilder";
 import { SettingsTab } from "./SettingsTab";
 import { VideoModal, ResourceModal, AssignmentModal, QuizModal } from "./Modals/ItemModals";
 import { Save, Eye, Send, CheckCircle2 } from "lucide-react";
 import { useToast } from "@/contexts/ToastContext";
+import { useCourses } from "@/contexts/CourseContext";
 
 export function CourseCreator() {
   const { toast } = useToast();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { courses, addCourse, updateCourse, updateCourseStatus } = useCourses();
+  
   const [activeTab, setActiveTab] = useState("basic");
   const [isPublishing, setIsPublishing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [targetModuleId, setTargetModuleId] = useState(null);
   const [activeModal, setActiveModal] = useState(null); 
+  const [courseId, setCourseId] = useState(null);
 
   const [courseData, setCourseData] = useState({
     title: "",
@@ -24,6 +32,8 @@ export function CourseCreator() {
     visibility: "Private",
     startDate: "",
     dripRelease: false,
+    status: "Draft",
+    feedback: "",
   });
 
   const [modules, setModules] = useState([
@@ -37,8 +47,37 @@ export function CourseCreator() {
     }
   ]);
 
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const id = params.get("id");
+    if (id) {
+      const existingCourse = courses.find(c => c.id === id);
+      if (existingCourse) {
+        setCourseId(id);
+        setCourseData(existingCourse);
+        if (existingCourse.modules) {
+          setModules(existingCourse.modules);
+        }
+      }
+    }
+  }, [location, courses]);
+
   const updateCourseData = (newData) => {
     setCourseData(prev => ({ ...prev, ...newData }));
+  };
+
+  const saveCurrentState = (finalStatus) => {
+    const coursePayload = {
+      ...courseData,
+      status: finalStatus || courseData.status,
+      modules
+    };
+
+    if (courseId) {
+      updateCourse(courseId, coursePayload);
+    } else {
+      addCourse(coursePayload);
+    }
   };
 
   const handlePublish = () => {
@@ -46,15 +85,28 @@ export function CourseCreator() {
       toast({ title: "Validation Error", description: "Course Title is required.", variant: "error" });
       return;
     }
+    if (modules.length === 0 || modules.reduce((a, m) => a + m.items?.length, 0) === 0) {
+      toast({ title: "Validation Error", description: "At least one module and one material are required to submit.", variant: "error" });
+      return;
+    }
+
     setIsPublishing(true);
     setTimeout(() => {
       setIsPublishing(false);
-      toast({ title: "Course Published!", description: "Your course is now live.", variant: "success" });
+      saveCurrentState("Pending Review");
+      toast({ title: "Course Submitted!", description: "Your course is pending admin review.", variant: "success" });
+      navigate("/teacher/courses");
     }, 1500);
   };
 
   const handleSaveDraft = () => {
-    toast({ title: "Draft Saved", description: "Progress saved successfully.", variant: "success" });
+    setIsSaving(true);
+    setTimeout(() => {
+      setIsSaving(false);
+      saveCurrentState("Draft");
+      toast({ title: "Draft Saved", description: "Progress saved successfully.", variant: "success" });
+      navigate("/teacher/courses");
+    }, 800);
   };
 
   const openModal = (type, moduleId) => {
@@ -70,14 +122,14 @@ export function CourseCreator() {
   const addItemToModule = (item) => {
     setModules(modules.map(mod => {
       if (mod.id === targetModuleId) {
-        return { ...mod, items: [...mod.items, item] };
+        return { ...mod, items: [...(mod.items || []), item] };
       }
       return mod;
     }));
   };
 
   const totalModules = modules.length;
-  const totalItems = modules.reduce((acc, mod) => acc + mod.items.length, 0);
+  const totalItems = modules.reduce((acc, mod) => acc + (mod.items ? mod.items.length : 0), 0);
 
   return (
     <div className="flex flex-col h-[calc(100vh-theme(spacing.20))] -mx-6 -my-6 md:-mx-8 md:-my-8 bg-slate-50 relative">
@@ -85,24 +137,25 @@ export function CourseCreator() {
       <header className="flex-none bg-white border-b border-slate-200 px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 z-10 shadow-sm">
         <div>
            <div className="flex items-center gap-3 mb-1">
-             <h1 className="text-2xl font-bold text-slate-800">Course Creator</h1>
-             <span className="px-2.5 py-1 bg-yellow-100 text-yellow-800 text-xs font-semibold rounded-full border border-yellow-200">
-               Draft
+             <h1 className="text-2xl font-bold text-slate-800">{courseId ? "Edit Course" : "Create Course"}</h1>
+             <span className={`px-2.5 py-1 text-xs font-semibold rounded-full border ${courseData.status === 'Rejected' ? 'bg-red-100 text-red-800 border-red-200' : 'bg-yellow-100 text-yellow-800 border-yellow-200'}`}>
+               {courseData.status}
              </span>
            </div>
            <p className="text-sm text-slate-500">Build and structure your course content before publishing.</p>
         </div>
         
         <div className="flex items-center gap-3">
-          <button onClick={handleSaveDraft} className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors shadow-sm">
-            <Save className="w-4 h-4" /> Save Draft
+          <button onClick={handleSaveDraft} disabled={isSaving || isPublishing} className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors shadow-sm disabled:opacity-70 disabled:cursor-not-allowed">
+             {isSaving ? <span className="w-4 h-4 border-2 border-slate-300 border-t-slate-600 rounded-full animate-spin flex-shrink-0" /> : <Save className="w-4 h-4" />}
+             Save Draft
           </button>
           <button className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors shadow-sm">
             <Eye className="w-4 h-4" /> Preview
           </button>
           <button 
             onClick={handlePublish}
-            disabled={isPublishing} 
+            disabled={isPublishing || isSaving} 
             className="flex items-center gap-2 px-5 py-2 text-sm font-medium text-white bg-primary rounded-xl hover:bg-primary/90 transition-colors shadow-sm shadow-primary/25 disabled:opacity-70 disabled:cursor-not-allowed"
           >
             {isPublishing ? (
@@ -110,7 +163,7 @@ export function CourseCreator() {
             ) : (
               <Send className="w-4 h-4" /> 
             )}
-            Publish
+            Submit for Review
           </button>
         </div>
       </header>
