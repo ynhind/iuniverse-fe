@@ -104,7 +104,7 @@ export function StudentCourses() {
                   className={`rounded-full px-2 py-1 text-xs font-medium border-none ${
                     course.status === "Active"
                       ? "bg-primary text-white"
-                      : "bg-gray-200 text-slate-900"
+                      : "bg-gray-200 text-yellow-400"
                   }`}
                 >
                   {course.status}

@@ -20,11 +20,18 @@ export function AuthProvider({ children }) {
   };
 
   const login = (email, password) => {
+    let role = "Student";
+    if (email === "teacher@gmail.com") {
+      role = "Teacher";
+    } else if (email === "admin@gmail.com") {
+      role = "Admin";
+    }
+
     setUser({
       id: "1",
       name: email.split("@")[0],
       email,
-      role: "Student",
+      role,
       avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${email}`,
     });
   };
