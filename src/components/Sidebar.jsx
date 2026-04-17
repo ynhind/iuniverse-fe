@@ -13,12 +13,24 @@ import {
   LogOut,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useLogoutMutation } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
 
 export function Sidebar() {
   const { user, logout } = useAuth();
+  const logoutMutation = useLogoutMutation();
 
-  const mainNav = [
+  const role = String(user?.role || "STUDENT").toUpperCase();
+
+  const handleLogout = () => {
+    logoutMutation.mutate(undefined, {
+      onSettled: () => {
+        logout();
+      },
+    });
+  };
+
+  const studentNav = [
     { name: "Dashboard", path: "/", icon: LayoutDashboard },
     { name: "My Courses", path: "/courses", icon: BookOpen },
     { name: "Schedule", path: "/schedule", icon: Calendar },
@@ -33,6 +45,7 @@ export function Sidebar() {
   ];
 
   const teacherNav = [
+    { name: "Dashboard", path: "/", icon: LayoutDashboard },
     { name: "My Created Courses", path: "/teacher/courses", icon: BookOpen },
     { name: "Course Creator", path: "/create-course", icon: FileEdit },
     { name: "Student Submissions", path: "/teacher/submissions", icon: Users },
@@ -48,7 +61,7 @@ export function Sidebar() {
             "flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-all duration-200",
             isActive
               ? "bg-primary text-primary-foreground shadow-md"
-              : "text-muted-foreground hover:bg-black/5 hover:text-foreground",
+              : "text-muted-foreground hover:bg-black/5 hover:text-foreground"
           )
         }
       >
@@ -58,8 +71,33 @@ export function Sidebar() {
     ));
   };
 
+  const getRoleLabel = () => {
+    switch (role) {
+      case "ADMIN":
+        return "Admin";
+      case "TEACHER":
+        return "Teacher";
+      default:
+        return "Student";
+    }
+  };
+
+  const getNavByRole = () => {
+    switch (role) {
+      case "ADMIN":
+        return adminNav;
+      case "TEACHER":
+        return teacherNav;
+      default:
+        return studentNav;
+    }
+  };
+
+  const currentNav = getNavByRole();
+  const roleLabel = getRoleLabel();
+
   return (
-    <aside className="relative z-20 m-4 hidden flex-col rounded-[2rem] glass w-[260px] lg:flex">
+    <aside className="relative z-20 m-4 hidden w-[260px] flex-col rounded-[2rem] glass lg:flex">
       <div className="flex h-20 items-center px-8">
         <div className="flex items-center gap-3 font-bold text-primary">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-accent text-white shadow-lg">
@@ -71,18 +109,11 @@ export function Sidebar() {
 
       <div className="flex-1 overflow-y-auto py-4">
         <nav className="grid gap-2 px-4">
-          {user?.role === "Student" && renderNavItems(mainNav)}
+          <div className="mb-2 px-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground/70">
+            {roleLabel} Dashboard
+          </div>
 
-          {(user?.role === "Admin" || user?.role === "Teacher") && (
-            <>
-              <div className="my-4 px-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground/70">
-                {user.role} Dashboard
-              </div>
-              {user.role === "Admin"
-                ? renderNavItems(adminNav)
-                : renderNavItems(teacherNav)}
-            </>
-          )}
+          {renderNavItems(currentNav)}
         </nav>
       </div>
 
@@ -96,6 +127,7 @@ export function Sidebar() {
               <HelpCircle className="h-4 w-4" />
               Help Center
             </NavLink>
+
             <NavLink
               to="/settings"
               className="flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-white/50 hover:text-foreground"
@@ -103,12 +135,14 @@ export function Sidebar() {
               <Settings className="h-4 w-4" />
               Settings
             </NavLink>
+
             <button
-              onClick={logout}
+              onClick={handleLogout}
               className="flex w-full items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-white/50 hover:text-foreground"
+              disabled={logoutMutation.isPending}
             >
               <LogOut className="h-4 w-4" />
-              Logout
+              {logoutMutation.isPending ? "Logging out..." : "Logout"}
             </button>
           </nav>
         </div>

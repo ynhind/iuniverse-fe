@@ -4,17 +4,31 @@ import { Label } from "@/components/ui/Label";
 import { Input } from "@/components/ui/Input";
 import { UploadCloud, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { useAddMaterialMutation, useCreateProblemSetMutation, useAddQuestionMutation } from "@/hooks/useTeacher";
+import { useToast } from "@/contexts/ToastContext";
 
 // --- VIDEO MODAL ---
-export function VideoModal({ isOpen, onClose, onAdd }) {
+export function VideoModal({ isOpen, onClose, onAdd, moduleId, courseId }) {
   const [data, setData] = useState({ title: "", description: "", url: "", duration: "" });
+  const addMaterialMutation = useAddMaterialMutation();
+  const { toast } = useToast();
 
   useEffect(() => { if (isOpen) setData({ title: "", description: "", url: "", duration: "" }) }, [isOpen]);
 
   const handleSubmit = () => {
     if (!data.title) return;
-    onAdd({ type: "video", id: `item-${Date.now()}`, ...data });
-    onClose();
+    const materialPayload = { title: data.title, type: "VIDEO", contentUrl: data.url || "https://example.com" };
+    
+    // API Call
+    addMaterialMutation.mutate({ moduleId, data: materialPayload, courseId }, {
+       onSuccess: (res) => {
+         const realId = res?.id || res?.materialId || `item-${Date.now()}`;
+         onAdd({ type: "video", id: realId, ...data });
+         toast({ title: "Success", description: "Video material added.", variant: "success" });
+         onClose();
+       },
+       onError: () => toast({ title: "Error", description: "Failed to add video.", variant: "error" })
+    });
   };
 
   return (
@@ -51,15 +65,27 @@ export function VideoModal({ isOpen, onClose, onAdd }) {
 }
 
 // --- RESOURCE MODAL ---
-export function ResourceModal({ isOpen, onClose, onAdd }) {
+export function ResourceModal({ isOpen, onClose, onAdd, moduleId, courseId }) {
   const [data, setData] = useState({ title: "", url: "" });
+  const addMaterialMutation = useAddMaterialMutation();
+  const { toast } = useToast();
 
   useEffect(() => { if (isOpen) setData({ title: "", url: "" }) }, [isOpen]);
 
   const handleSubmit = () => {
     if (!data.title) return;
-    onAdd({ type: "resource", id: `item-${Date.now()}`, ...data });
-    onClose();
+    
+    const materialPayload = { title: data.title, type: "DOCUMENT", contentUrl: data.url || "https://example.com/doc.pdf" };
+    
+    addMaterialMutation.mutate({ moduleId, data: materialPayload, courseId }, {
+       onSuccess: (res) => {
+         const realId = res?.id || res?.materialId || `item-${Date.now()}`;
+         onAdd({ type: "resource", id: realId, ...data });
+         toast({ title: "Success", description: "Resource material added.", variant: "success" });
+         onClose();
+       },
+       onError: () => toast({ title: "Error", description: "Failed to add resource.", variant: "error" })
+    });
   };
 
   return (
@@ -91,15 +117,27 @@ export function ResourceModal({ isOpen, onClose, onAdd }) {
 }
 
 // --- ASSIGNMENT MODAL ---
-export function AssignmentModal({ isOpen, onClose, onAdd }) {
+export function AssignmentModal({ isOpen, onClose, onAdd, moduleId, courseId }) {
   const [data, setData] = useState({ title: "", maxScore: "100", dueDate: "" });
+  const addMaterialMutation = useAddMaterialMutation();
+  const { toast } = useToast();
 
   useEffect(() => { if (isOpen) setData({ title: "", maxScore: "100", dueDate: "" }) }, [isOpen]);
 
   const handleSubmit = () => {
     if (!data.title) return;
-    onAdd({ type: "assignment", id: `item-${Date.now()}`, ...data });
-    onClose();
+    
+    const materialPayload = { title: data.title, type: "ASSIGNMENT", contentUrl: "https://example.com/assignment" };
+    
+    addMaterialMutation.mutate({ moduleId, data: materialPayload, courseId }, {
+       onSuccess: (res) => {
+         const realId = res?.id || res?.materialId || `item-${Date.now()}`;
+         onAdd({ type: "assignment", id: realId, ...data });
+         toast({ title: "Success", description: "Assignment added.", variant: "success" });
+         onClose();
+       },
+       onError: () => toast({ title: "Error", description: "Failed to add assignment.", variant: "error" })
+    });
   };
 
   return (
@@ -138,33 +176,101 @@ export function AssignmentModal({ isOpen, onClose, onAdd }) {
 }
 
 // --- QUIZ MODAL ---
-export function QuizModal({ isOpen, onClose, onAdd }) {
-  const [data, setData] = useState({ title: "", questions: [] });
+export function QuizModal({ isOpen, onClose, onAdd, moduleId, courseId }) {
+  const [data, setData] = useState({ title: "", timeLimitMins: 30, questions: [] });
+  const createProblemSetMutation = useCreateProblemSetMutation();
+  const { toast } = useToast();
 
-  useEffect(() => { if (isOpen) setData({ title: "", questions: [] }) }, [isOpen]);
+  useEffect(() => { if (isOpen) setData({ title: "", timeLimitMins: 30, questions: [] }) }, [isOpen]);
 
-  const handleSubmit = () => {
+  const handleAddQuestion = () => {
+    setData(prev => ({
+      ...prev,
+      questions: [...prev.questions, { content: "", type: "MULTIPLE_CHOICE", correctAns: "", points: 10, options: ["", ""] }]
+    }));
+  };
+
+  const updateQuestion = (idx, field, value) => {
+    const newQs = [...data.questions];
+    newQs[idx][field] = value;
+    
+    if (field === 'type') {
+       if (value === 'TRUE_FALSE') {
+          newQs[idx].options = ["True", "False"];
+          newQs[idx].correctAns = "True";
+       } else if (value === 'SHORT_ANSWER') {
+          newQs[idx].options = [];
+          newQs[idx].correctAns = "";
+       } else {
+          newQs[idx].options = ["", ""];
+          newQs[idx].correctAns = "";
+       }
+    }
+    
+    setData({ ...data, questions: newQs });
+  };
+
+  const updateOption = (qIdx, optIdx, value) => {
+    const newQs = [...data.questions];
+    newQs[qIdx].options[optIdx] = value;
+    setData({ ...data, questions: newQs });
+  };
+
+  const addOption = (qIdx) => {
+    const newQs = [...data.questions];
+    newQs[qIdx].options.push("");
+    setData({ ...data, questions: newQs });
+  };
+
+  const handleSubmit = async () => {
     if (!data.title) return;
-    onAdd({ type: "quiz", id: `item-${Date.now()}`, ...data });
-    onClose();
+    
+    try {
+      const formattedQs = data.questions.map(q => ({
+        content: q.content,
+        type: q.type,
+        correctAns: q.correctAns,
+        points: Number(q.points) || 10,
+        options: q.options
+      }));
+
+      const dt = new Date();
+      dt.setDate(dt.getDate() + 7);
+
+      const setPayload = { 
+        title: data.title, 
+        dueDate: dt.toISOString(), 
+        timeLimitMins: Number(data.timeLimitMins) || 30, 
+        questions: formattedQs 
+      };
+      
+      const psRes = await createProblemSetMutation.mutateAsync({ moduleId, data: setPayload, courseId });
+      const realPsId = psRes?.id || psRes?.problemSetId || `ps-${Date.now()}`;
+      
+      onAdd({ type: "quiz", id: realPsId, ...data });
+      toast({ title: "Success", description: "Problem set created successfully.", variant: "success" });
+      onClose();
+    } catch (e) {
+      toast({ title: "Error", description: "Failed to create problem set.", variant: "error" });
+    }
   };
 
   return (
-    <ModalWrapper title="Create Quiz" isOpen={isOpen} onClose={onClose} onSubmit={handleSubmit} submitText="Create Quiz">
-      <div className="space-y-6">
+    <ModalWrapper title="Create Problem Set" isOpen={isOpen} onClose={onClose} onSubmit={handleSubmit} submitText="Create Problem Set">
+      <div className="space-y-6 max-h-[70vh] overflow-y-auto pr-2">
         <div className="space-y-2">
-          <Label>Quiz Title <span className="text-red-500">*</span></Label>
+          <Label>Problem Set Title <span className="text-red-500">*</span></Label>
           <Input value={data.title} onChange={e => setData({...data, title: e.target.value})} placeholder="e.g. Midterm Assessment" />
         </div>
         
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label>Time Limit (minutes)</Label>
-            <Input type="number" placeholder="Optional" />
+            <Input type="number" value={data.timeLimitMins} onChange={e => setData({...data, timeLimitMins: e.target.value})} placeholder="Optional" />
           </div>
           <div className="space-y-2">
             <Label>Passing Score (%)</Label>
-            <Input type="number" placeholder="80" />
+            <Input type="number" placeholder="80" disabled />
           </div>
         </div>
 
@@ -173,7 +279,52 @@ export function QuizModal({ isOpen, onClose, onAdd }) {
            {data.questions.length === 0 && (
              <p className="text-sm text-slate-500 text-center py-4">No questions added yet.</p>
            )}
-           <Button variant="outline" className="w-full text-sm h-9 bg-white" onClick={() => setData({...data, questions: [...data.questions, { q: "" }]})}>
+           {data.questions.map((q, idx) => (
+             <div key={idx} className="mb-4 p-4 border border-slate-200 bg-white rounded-lg">
+                <div className="flex gap-2 mb-3">
+                   <select className="p-2 text-sm border border-slate-300 rounded" value={q.type} onChange={e => updateQuestion(idx, 'type', e.target.value)}>
+                      <option value="MULTIPLE_CHOICE">Multiple Choice</option>
+                      <option value="TRUE_FALSE">True / False</option>
+                      <option value="SHORT_ANSWER">Short Answer</option>
+                   </select>
+                   <Input type="number" value={q.points} onChange={e => updateQuestion(idx, 'points', e.target.value)} placeholder="Points" className="w-24 text-sm" />
+                </div>
+                <Input value={q.content} onChange={e => updateQuestion(idx, 'content', e.target.value)} placeholder={`Question text...`} className="mb-3" />
+                
+                {q.type === 'MULTIPLE_CHOICE' && (
+                   <div className="space-y-2 pl-4">
+                     {q.options.map((opt, oIdx) => (
+                        <div key={oIdx} className="flex items-center gap-2">
+                          <input type="radio" name={`q-${idx}-correct`} checked={q.correctAns === opt && opt !== ""} onChange={() => updateQuestion(idx, 'correctAns', opt)} className="mt-1" />
+                          <Input value={opt} onChange={e => updateOption(idx, oIdx, e.target.value)} className="h-8 text-sm" placeholder={`Option ${oIdx + 1}`} />
+                        </div>
+                     ))}
+                     <Button type="button" variant="ghost" size="sm" onClick={() => addOption(idx)} className="h-6 text-xs text-blue-600 mt-2">
+                       + Add Option
+                     </Button>
+                   </div>
+                )}
+
+                {q.type === 'TRUE_FALSE' && (
+                   <div className="space-y-2 pl-4 flex gap-4">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input type="radio" name={`q-${idx}-tf`} checked={q.correctAns === 'True'} onChange={() => updateQuestion(idx, 'correctAns', 'True')} /> True
+                      </label>
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input type="radio" name={`q-${idx}-tf`} checked={q.correctAns === 'False'} onChange={() => updateQuestion(idx, 'correctAns', 'False')} /> False
+                      </label>
+                   </div>
+                )}
+
+                {q.type === 'SHORT_ANSWER' && (
+                   <div className="pl-4">
+                      <Label className="text-xs text-slate-500 mb-1 block">Expected correct answer</Label>
+                      <Input value={q.correctAns} onChange={e => updateQuestion(idx, 'correctAns', e.target.value)} className="h-8 text-sm" placeholder="Exact string to match" />
+                   </div>
+                )}
+             </div>
+           ))}
+           <Button type="button" variant="outline" className="w-full text-sm h-9 bg-white border-dashed border-slate-300" onClick={handleAddQuestion}>
              <Plus className="w-4 h-4 mr-2" /> Add Question
            </Button>
         </div>
@@ -181,3 +332,4 @@ export function QuizModal({ isOpen, onClose, onAdd }) {
     </ModalWrapper>
   );
 }
+

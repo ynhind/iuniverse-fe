@@ -40,6 +40,19 @@ export function SettingsTab({ courseData, updateCourseData }) {
               className="bg-white"
             />
           </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="courseID" className="font-medium text-slate-700">Global Course ID</Label>
+            <Input 
+              id="courseID" 
+              name="courseID" 
+              type="number"
+              placeholder="e.g. 1024"
+              value={courseData.courseID || ""} 
+              onChange={handleChange} 
+              className="bg-white"
+            />
+          </div>
           
           <div className="space-y-2">
             <Label htmlFor="enrollmentDeadline" className="font-medium text-slate-700">Enrollment Deadline</Label>
@@ -48,6 +61,19 @@ export function SettingsTab({ courseData, updateCourseData }) {
               name="enrollmentDeadline" 
               type="date"
               value={courseData.enrollmentDeadline || ""} 
+              onChange={handleChange} 
+              className="bg-white"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="joinCode" className="font-medium text-slate-700">Course Join Code</Label>
+            <Input 
+              id="joinCode" 
+              name="joinCode" 
+              type="text"
+              placeholder="e.g. FALL2026-CS101"
+              value={courseData.joinCode || ""} 
               onChange={handleChange} 
               className="bg-white"
             />

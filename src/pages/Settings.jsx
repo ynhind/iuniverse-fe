@@ -23,10 +23,44 @@ import {
   Smartphone,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/contexts/ToastContext";
+import { useChangePasswordMutation } from "@/hooks/useAuth";
 import { Badge } from "@/components/ui/Badge";
 
 export function Settings() {
   const { user } = useAuth();
+  const { toast } = useToast();
+  const changePasswordMutation = useChangePasswordMutation();
+
+  const [passwordState, setPasswordState] = React.useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+  });
+
+  const handleChangePassword = () => {
+    if (passwordState.newPassword !== passwordState.confirmPassword) {
+      toast({ title: "Error", description: "Passwords do not match.", variant: "error" });
+      return;
+    }
+    if (!passwordState.currentPassword || !passwordState.newPassword) {
+      toast({ title: "Error", description: "Please fill all fields.", variant: "error" });
+      return;
+    }
+
+    changePasswordMutation.mutate({
+      oldPassword: passwordState.currentPassword,
+      newPassword: passwordState.newPassword
+    }, {
+      onSuccess: () => {
+        toast({ title: "Success", description: "Password updated successfully.", variant: "success" });
+        setPasswordState({ currentPassword: "", newPassword: "", confirmPassword: "" });
+      },
+      onError: (err) => {
+        toast({ title: "Error", description: err?.response?.data?.message || "Failed to update password.", variant: "error" });
+      }
+    });
+  };
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700 max-w-5xl mx-auto">
@@ -344,6 +378,8 @@ export function Settings() {
                     <Input
                       id="current-password"
                       type="password"
+                      value={passwordState.currentPassword}
+                      onChange={(e) => setPasswordState({...passwordState, currentPassword: e.target.value})}
                       className="bg-white/70 border-slate-200/60 shadow-sm rounded-xl focus-visible:ring-primary/20"
                     />
                   </div>
@@ -357,6 +393,8 @@ export function Settings() {
                     <Input
                       id="new-password"
                       type="password"
+                      value={passwordState.newPassword}
+                      onChange={(e) => setPasswordState({...passwordState, newPassword: e.target.value})}
                       className="bg-white/70 border-slate-200/60 shadow-sm rounded-xl focus-visible:ring-primary/20"
                     />
                   </div>
@@ -370,11 +408,17 @@ export function Settings() {
                     <Input
                       id="confirm-password"
                       type="password"
+                      value={passwordState.confirmPassword}
+                      onChange={(e) => setPasswordState({...passwordState, confirmPassword: e.target.value})}
                       className="bg-white/70 border-slate-200/60 shadow-sm rounded-xl focus-visible:ring-primary/20"
                     />
                   </div>
-                  <Button className="w-fit mt-2 rounded-xl shadow-sm">
-                    Update Password
+                  <Button 
+                    className="w-fit mt-2 rounded-xl shadow-sm"
+                    onClick={handleChangePassword}
+                    disabled={changePasswordMutation.isPending}
+                  >
+                    {changePasswordMutation.isPending ? "Updating..." : "Update Password"}
                   </Button>
                 </div>
               </div>

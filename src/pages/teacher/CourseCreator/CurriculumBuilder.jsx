@@ -1,9 +1,16 @@
 import React, { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { ChevronDown, ChevronRight, GripVertical, Plus, Trash2, Video, FileText, CheckSquare, FileQuestion, ArrowUp, ArrowDown } from "lucide-react";
+import { useCreateModuleMutation, useUpdateModuleMutation, useDeleteModuleMutation, useDeleteMaterialMutation } from "@/hooks/useTeacher";
+import { useToast } from "@/contexts/ToastContext";
 
-export function CurriculumBuilder({ modules, setModules, openModal }) {
+export function CurriculumBuilder({ modules, setModules, openModal, courseId }) {
   const [expandedModules, setExpandedModules] = useState({});
+  const createModuleMutation = useCreateModuleMutation();
+  const updateModuleMutation = useUpdateModuleMutation();
+  const deleteModuleMutation = useDeleteModuleMutation();
+  const deleteMaterialMutation = useDeleteMaterialMutation();
+  const { toast } = useToast();
 
   const toggleModule = (id) => {
     setExpandedModules(prev => ({ ...prev, [id]: !prev[id] }));
@@ -16,15 +23,38 @@ export function CurriculumBuilder({ modules, setModules, openModal }) {
       description: "",
       items: []
     };
+    
+    // Add locally for optimistic UI
     setModules([...modules, newModule]);
     setExpandedModules(prev => ({ ...prev, [newModule.id]: true }));
+
+    // Sync to backend immediately
+    createModuleMutation.mutate({ courseId, data: { title: "New Module" } }, {
+       onSuccess: (res) => {
+         const realId = res?.id || res?.moduleId || newModule.id;
+         setModules(prev => prev.map(m => m.id === newModule.id ? { ...m, id: realId } : m));
+       },
+       onError: () => toast({ title: "Error", description: "Failed to create module on server.", variant: "error" })
+    });
   };
 
   const updateModuleTitle = (id, title) => {
     setModules(modules.map(mod => mod.id === id ? { ...mod, title } : mod));
   };
+  
+  const handleModuleTitleBlur = (id, title, index) => {
+    if (String(id).startsWith('mod-')) return;
+    updateModuleMutation.mutate({ moduleId: id, data: { title, orderIndex: index + 1 }, courseId }, {
+       onError: () => toast({ title: "Error", description: "Failed to save title.", variant: "error" })
+    });
+  };
 
   const deleteModule = (id) => {
+    if (!String(id).startsWith('mod-')) {
+       deleteModuleMutation.mutate({ moduleId: id, courseId }, {
+          onError: () => toast({ title: "Error", description: "Failed to delete module.", variant: "error" })
+       });
+    }
     setModules(modules.filter(mod => mod.id !== id));
   };
 
@@ -51,6 +81,11 @@ export function CurriculumBuilder({ modules, setModules, openModal }) {
   };
 
   const deleteItem = (moduleId, itemId) => {
+    if (!String(itemId).startsWith('item-') && !String(itemId).startsWith('ps-')) {
+       deleteMaterialMutation.mutate({ moduleId, materialId: itemId, courseId }, {
+          onError: () => toast({ title: "Error", description: "Failed to delete item.", variant: "error" })
+       });
+    }
     setModules(modules.map(mod => {
       if (mod.id === moduleId) {
         return { ...mod, items: mod.items.filter(item => item.id !== itemId) };
@@ -105,6 +140,7 @@ export function CurriculumBuilder({ modules, setModules, openModal }) {
                       type="text" 
                       value={mod.title}
                       onChange={(e) => updateModuleTitle(mod.id, e.target.value)}
+                      onBlur={() => handleModuleTitleBlur(mod.id, mod.title, modIndex)}
                       className="flex-1 bg-transparent border-none outline-none font-medium text-slate-900 focus:ring-0 p-0 text-sm"
                       placeholder="Module Title"
                     />

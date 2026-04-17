@@ -7,6 +7,14 @@ import { VideoModal, ResourceModal, AssignmentModal, QuizModal } from "./Modals/
 import { Save, Eye, Send, CheckCircle2 } from "lucide-react";
 import { useToast } from "@/contexts/ToastContext";
 import { useCourses } from "@/contexts/CourseContext";
+import {
+  useCreateCourseMutation,
+  useUpdateCourseMutation,
+  useCreateModuleMutation,
+  useUpdateModuleMutation,
+  useAddMaterialMutation,
+  useCreateProblemSetMutation
+} from "@/hooks/useTeacher";
 
 export function CourseCreator() {
   const { toast } = useToast();
@@ -20,6 +28,13 @@ export function CourseCreator() {
   const [targetModuleId, setTargetModuleId] = useState(null);
   const [activeModal, setActiveModal] = useState(null); 
   const [courseId, setCourseId] = useState(null);
+
+  const createCourseMutation = useCreateCourseMutation();
+  const updateCourseMutation = useUpdateCourseMutation();
+  const createModuleMutation = useCreateModuleMutation();
+  const updateModuleMutation = useUpdateModuleMutation();
+  const addMaterialMutation = useAddMaterialMutation();
+  const createProblemSetMutation = useCreateProblemSetMutation();
 
   const [courseData, setCourseData] = useState({
     title: "",
@@ -66,21 +81,69 @@ export function CourseCreator() {
     setCourseData(prev => ({ ...prev, ...newData }));
   };
 
-  const saveCurrentState = (finalStatus) => {
-    const coursePayload = {
-      ...courseData,
-      status: finalStatus || courseData.status,
-      modules
-    };
+  const saveCurrentState = async (finalStatus) => {
+    try {
+      let currentCourseId = courseId;
+      if (!courseId) {
+         const createPayload = {
+           courseName: courseData.title,
+           description: courseData.shortDescription || courseData.overview || "description",
+           semesterId: courseData.semesterId ? parseInt(courseData.semesterId) : 1, 
+           courseID: courseData.courseID ? parseInt(courseData.courseID) : 1
+         };
+         const crs = await createCourseMutation.mutateAsync(createPayload);
+         currentCourseId = crs?.id || crs?.courseID || 1; 
+         setCourseId(currentCourseId);
+      } else {
+         const updatePayload = {
+           courseName: courseData.title,
+           description: courseData.shortDescription || courseData.overview || "description",
+           semesterId: courseData.semesterId ? parseInt(courseData.semesterId) : 1, 
+           joinCode: courseData.joinCode || ""
+         };
+         await updateCourseMutation.mutateAsync({ id: courseId, data: updatePayload });
+      }
 
-    if (courseId) {
-      updateCourse(courseId, coursePayload);
-    } else {
-      addCourse(coursePayload);
+      for (const mod of modules) {
+        const isNewMod = typeof mod.id === 'string' && mod.id.startsWith('mod-');
+        let currentModId = mod.id;
+
+        if (isNewMod) {
+           const modRes = await createModuleMutation.mutateAsync({
+             courseId: currentCourseId,
+             data: { title: mod.title }
+           });
+           currentModId = modRes?.id || modRes?.moduleId || 1;
+           
+           if (mod.items) {
+             for (const item of mod.items) {
+                if (item.type === 'quiz') {
+                   await createProblemSetMutation.mutateAsync({
+                     moduleId: currentModId,
+                     data: { title: item.title, dueDate: "2026-12-31", timeLimitMins: 45, questions: [] }
+                   });
+                } else {
+                   await addMaterialMutation.mutateAsync({
+                     moduleId: currentModId,
+                     data: { title: item.title, type: item.type.toUpperCase(), contentUrl: "https://example.com" }
+                   });
+                }
+             }
+           }
+        } else {
+           await updateModuleMutation.mutateAsync({ 
+             moduleId: mod.id, 
+             data: { title: mod.title } 
+           });
+        }
+      }
+    } catch(err) {
+      console.error(err);
+      throw err;
     }
   };
 
-  const handlePublish = () => {
+  const handlePublish = async () => {
     if (!courseData.title) {
       toast({ title: "Validation Error", description: "Course Title is required.", variant: "error" });
       return;
@@ -91,22 +154,28 @@ export function CourseCreator() {
     }
 
     setIsPublishing(true);
-    setTimeout(() => {
+    try {
+      await saveCurrentState("Pending Review");
       setIsPublishing(false);
-      saveCurrentState("Pending Review");
       toast({ title: "Course Submitted!", description: "Your course is pending admin review.", variant: "success" });
       navigate("/teacher/courses");
-    }, 1500);
+    } catch (e) {
+      setIsPublishing(false);
+      toast({ title: "Submission Failed", description: "An error occurred.", variant: "error" });
+    }
   };
 
-  const handleSaveDraft = () => {
+  const handleSaveDraft = async () => {
     setIsSaving(true);
-    setTimeout(() => {
+    try {
+      await saveCurrentState("Draft");
       setIsSaving(false);
-      saveCurrentState("Draft");
       toast({ title: "Draft Saved", description: "Progress saved successfully.", variant: "success" });
       navigate("/teacher/courses");
-    }, 800);
+    } catch (e) {
+      setIsSaving(false);
+      toast({ title: "Save Failed", description: "An error occurred.", variant: "error" });
+    }
   };
 
   const openModal = (type, moduleId) => {
@@ -181,13 +250,25 @@ export function CourseCreator() {
                   1. Basic Information
                 </button>
                 <button 
-                  onClick={() => setActiveTab('curriculum')}
+                  onClick={() => {
+                    if (!courseId) {
+                      toast({ title: "Draft Required", description: "Please save basic info first to enable Curriculum Builder.", variant: "error" });
+                      return;
+                    }
+                    setActiveTab('curriculum');
+                  }}
                   className={`px-4 py-2.5 text-sm font-medium rounded-t-lg border-b-2 transition-colors ${activeTab === 'curriculum' ? 'border-primary text-primary' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'}`}
                 >
                   2. Curriculum Builder
                 </button>
                 <button 
-                  onClick={() => setActiveTab('settings')}
+                  onClick={() => {
+                     if (!courseId) {
+                      toast({ title: "Draft Required", description: "Please save basic info first to access Settings.", variant: "error" });
+                      return;
+                    }
+                    setActiveTab('settings');
+                  }}
                   className={`px-4 py-2.5 text-sm font-medium rounded-t-lg border-b-2 transition-colors ${activeTab === 'settings' ? 'border-primary text-primary' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'}`}
                 >
                   3. Settings & Access
@@ -196,7 +277,7 @@ export function CourseCreator() {
 
               <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm min-h-[500px]">
                 {activeTab === 'basic' && <BasicInfoTab courseData={courseData} updateCourseData={updateCourseData} />}
-                {activeTab === 'curriculum' && <CurriculumBuilder modules={modules} setModules={setModules} openModal={openModal} />}
+                {activeTab === 'curriculum' && <CurriculumBuilder modules={modules} setModules={setModules} openModal={openModal} courseId={courseId} />}
                 {activeTab === 'settings' && <SettingsTab courseData={courseData} updateCourseData={updateCourseData} />}
               </div>
 
@@ -247,10 +328,10 @@ export function CourseCreator() {
 
       </div>
 
-      <VideoModal isOpen={activeModal === 'video'} onClose={closeModal} onAdd={addItemToModule} />
-      <ResourceModal isOpen={activeModal === 'resource'} onClose={closeModal} onAdd={addItemToModule} />
-      <AssignmentModal isOpen={activeModal === 'assignment'} onClose={closeModal} onAdd={addItemToModule} />
-      <QuizModal isOpen={activeModal === 'quiz'} onClose={closeModal} onAdd={addItemToModule} />
+      <VideoModal isOpen={activeModal === 'video'} onClose={closeModal} onAdd={addItemToModule} moduleId={targetModuleId} courseId={courseId} />
+      <ResourceModal isOpen={activeModal === 'resource'} onClose={closeModal} onAdd={addItemToModule} moduleId={targetModuleId} courseId={courseId} />
+      <AssignmentModal isOpen={activeModal === 'assignment'} onClose={closeModal} onAdd={addItemToModule} moduleId={targetModuleId} courseId={courseId} />
+      <QuizModal isOpen={activeModal === 'quiz'} onClose={closeModal} onAdd={addItemToModule} moduleId={targetModuleId} courseId={courseId} />
 
     </div>
   );

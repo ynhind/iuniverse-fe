@@ -1,212 +1,401 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { useRegisterMutation, useVerifyAccountMutation, useResendOtpMutation } from "@/hooks/useAuth";
 import { useToast } from "@/contexts/ToastContext";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Label } from "@/components/ui/Label";
-import { UserPlus, Mail, Lock, AlertCircle, User, Eye, EyeOff } from "lucide-react";
+import { UserPlus, Mail, Lock, AlertCircle, User, Eye, EyeOff, BookOpen, GraduationCap } from "lucide-react";
 
 export function Register() {
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [role, setRole] = useState("STUDENT");
+  const [formData, setFormData] = useState({
+    firstName: "",
+    lastName: "",
+    username: "",
+    email: "",
+    password: "",
+    confirmPassword: "",
+    // Student specific
+    gender: "MALE",
+    birthday: "",
+    studentCode: "",
+    street: "",
+    city: "",
+    country: "",
+    // Teacher specific
+    department: ""
+  });
   const [showPassword, setShowPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [otp, setOtp] = useState("");
   const [errors, setErrors] = useState({});
-  const { login } = useAuth(); 
+
+  const { login } = useAuth();
   const { toast } = useToast();
+  const registerMutation = useRegisterMutation();
+  const verifyAccountMutation = useVerifyAccountMutation();
+  const resendOtpMutation = useResendOtpMutation();
   const navigate = useNavigate();
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+    if (errors[name]) {
+      setErrors(prev => ({ ...prev, [name]: null }));
+    }
+  };
 
   const validate = () => {
     const newErrors = {};
-    if (!name) {
-      newErrors.name = "Name is required";
-    }
-    if (!email) {
+    if (!formData.firstName) newErrors.firstName = "First name is required";
+    if (!formData.lastName) newErrors.lastName = "Last name is required";
+    if (!formData.username) newErrors.username = "Username is required";
+    if (!formData.email) {
       newErrors.email = "Email is required";
-    } else if (!/\S+@\S+\.\S+/.test(email)) {
+    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
       newErrors.email = "Email is invalid";
     }
-    if (!password) {
+    if (!formData.password) {
       newErrors.password = "Password is required";
-    } else if (password.length < 6) {
+    } else if (formData.password.length < 6) {
       newErrors.password = "Password must be at least 6 characters";
     }
+    if (formData.password !== formData.confirmPassword) {
+      newErrors.confirmPassword = "Passwords do not match";
+    }
+
+    if (role === "STUDENT") {
+      if (!formData.birthday) newErrors.birthday = "Birthday is required";
+      if (!formData.studentCode) newErrors.studentCode = "Student code is required";
+      if (!formData.street) newErrors.street = "Street address is required";
+      if (!formData.city) newErrors.city = "City is required";
+      if (!formData.country) newErrors.country = "Country is required";
+    }
+
+    if (role === "TEACHER" && !formData.department) {
+      newErrors.department = "Department is required";
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
-    if (!validate()) {
-      return;
+    if (!validate()) return;
+
+    let payload = {
+      firstName: formData.firstName,
+      lastName: formData.lastName,
+      username: formData.username,
+      password: formData.password,
+      email: formData.email,
+      role: role
+    };
+
+    if (role === "STUDENT") {
+      payload = {
+        ...payload,
+        gender: formData.gender,
+        birthday: formData.birthday,
+        studentCode: formData.studentCode,
+        address: {
+          street: formData.street,
+          city: formData.city,
+          country: formData.country,
+          addressType: 1
+        }
+      };
+    } else {
+      payload = {
+        ...payload,
+        department: formData.department
+      };
     }
 
-    setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
-      login(email, password);
-      toast({
-        title: "Account Created",
-        description: "Welcome to the platform!",
-        variant: "success",
-      });
-      navigate("/");
-    }, 1000);
+    registerMutation.mutate(payload, {
+      onSuccess: () => {
+        setIsVerifying(true);
+        toast({ title: "Account Created!", description: "Please verify your email with the OTP sent.", variant: "success" });
+      },
+      onError: (err) => {
+        toast({ title: "Registration Failed", description: err?.response?.data?.message || "Something went wrong.", variant: "error" });
+      }
+    });
   };
 
+  const handleVerify = () => {
+    if (!otp) {
+      toast({ title: "Error", description: "Please enter OTP.", variant: "error" });
+      return;
+    }
+    verifyAccountMutation.mutate({ email: formData.email, otp }, {
+       onSuccess: () => {
+         toast({ title: "Account Verified", description: "Welcome! Please login.", variant: "success" });
+         navigate("/login");
+       },
+       onError: (err) => {
+         toast({ title: "Verification Failed", description: err?.response?.data?.message || "Invalid OTP.", variant: "error" });
+       }
+    });
+  };
+
+  const handleResend = () => {
+    resendOtpMutation.mutate(formData.email, {
+       onSuccess: () => toast({ title: "OTP Sent", description: "A new OTP has been sent.", variant: "success" }),
+       onError: () => toast({ title: "Error", description: "Could not resend OTP.", variant: "error" })
+    });
+  };
+
+  if (isVerifying) {
+    return (
+      <div className="animate-in fade-in zoom-in-95 duration-500 max-w-md mx-auto mt-20">
+        <Card className="glass border-white/40 shadow-2xl backdrop-blur-2xl">
+          <CardHeader className="text-center">
+            <CardTitle className="text-2xl font-bold">Verify Your Email</CardTitle>
+            <CardDescription>Enter the OTP sent to {formData.email}</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label>One-Time Password</Label>
+              <Input 
+                value={otp} 
+                onChange={e => setOtp(e.target.value)} 
+                placeholder="123456" 
+                className="text-center tracking-widest text-lg h-12"
+              />
+            </div>
+            <Button 
+              className="w-full h-12" 
+              onClick={handleVerify}
+              disabled={verifyAccountMutation.isPending}
+            >
+              {verifyAccountMutation.isPending ? "Verifying..." : "Verify Account"}
+            </Button>
+            <div className="text-center pt-2">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="text-primary" 
+                onClick={handleResend}
+                disabled={resendOtpMutation.isPending}
+              >
+                {resendOtpMutation.isPending ? "Sending..." : "Resend OTP"}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
-    <div className="animate-in fade-in zoom-in-95 duration-500">
+    <div className="animate-in fade-in zoom-in-95 duration-500 w-full max-w-xl mx-auto">
       <Card className="glass border-white/40 shadow-2xl shadow-indigo-500/10 backdrop-blur-2xl">
         <CardHeader className="space-y-3 pb-6 text-center">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-tr from-primary to-secondary shadow-lg shadow-primary/30">
-            <UserPlus className="h-6 w-6 text-white" />
+          <div className="flex justify-center mb-2">
+            <div className="flex p-1 bg-slate-100 rounded-xl">
+              <button
+                type="button"
+                onClick={() => setRole("STUDENT")}
+                className={`flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-semibold transition-all ${
+                  role === "STUDENT" ? "bg-white text-primary shadow-sm" : "text-slate-500 hover:text-slate-700"
+                }`}
+              >
+                <GraduationCap className="h-4 w-4" />
+                Student
+              </button>
+              <button
+                type="button"
+                onClick={() => setRole("TEACHER")}
+                className={`flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-semibold transition-all ${
+                  role === "TEACHER" ? "bg-white text-primary shadow-sm" : "text-slate-500 hover:text-slate-700"
+                }`}
+              >
+                <BookOpen className="h-4 w-4" />
+                Teacher
+              </button>
+            </div>
           </div>
           <div className="space-y-1">
             <CardTitle className="text-3xl font-bold tracking-tight text-slate-900">
-              Create an account
+              Create a {role === "STUDENT" ? "Student" : "Teacher"} account
             </CardTitle>
             <CardDescription className="text-base text-slate-500">
-              Enter your details to get started
+              Enter your details to register
             </CardDescription>
           </div>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-5">
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="name" className="text-slate-700 font-medium">Full Name</Label>
-                <div className="relative">
-                  <User className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
-                  <Input
-                    id="name"
-                    type="text"
-                    placeholder="Jane Doe"
-                    className={`pl-10 h-12 bg-white/50 border-slate-200/60 focus:bg-white/80 transition-all ${
-                      errors.name ? "border-red-300 focus:border-red-500 focus:ring-red-200" : ""
-                    }`}
-                    value={name}
-                    onChange={(e) => {
-                      setName(e.target.value);
-                      if (errors.name) setErrors({ ...errors, name: null });
-                    }}
-                  />
-                </div>
-                {errors.name && (
-                  <p className="text-sm text-red-500 flex items-center gap-1.5 animate-in slide-in-from-top-1">
-                    <AlertCircle className="h-4 w-4" />
-                    {errors.name}
-                  </p>
-                )}
+            <div className="grid grid-cols-2 gap-4">
+              {/* First Name */}
+              <div className="space-y-2 col-span-1">
+                <Label htmlFor="firstName" className="text-slate-700 font-medium">First Name</Label>
+                <Input
+                  id="firstName" name="firstName" type="text" placeholder="John"
+                  className={`h-11 bg-white/50 border-slate-200/60 ${errors.firstName ? "border-red-300" : ""}`}
+                  value={formData.firstName} onChange={handleInputChange}
+                />
+                {errors.firstName && <p className="text-xs text-red-500">{errors.firstName}</p>}
               </div>
+
+              {/* Last Name */}
+              <div className="space-y-2 col-span-1">
+                <Label htmlFor="lastName" className="text-slate-700 font-medium">Last Name</Label>
+                <Input
+                  id="lastName" name="lastName" type="text" placeholder="Doe"
+                  className={`h-11 bg-white/50 border-slate-200/60 ${errors.lastName ? "border-red-300" : ""}`}
+                  value={formData.lastName} onChange={handleInputChange}
+                />
+                {errors.lastName && <p className="text-xs text-red-500">{errors.lastName}</p>}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              {/* Username */}
+              <div className="space-y-2">
+                <Label htmlFor="username" className="text-slate-700 font-medium">Username</Label>
+                <Input
+                  id="username" name="username" type="text" placeholder="johndoe123"
+                  className={`h-11 bg-white/50 border-slate-200/60 ${errors.username ? "border-red-300" : ""}`}
+                  value={formData.username} onChange={handleInputChange}
+                />
+                {errors.username && <p className="text-xs text-red-500">{errors.username}</p>}
+              </div>
+
+              {/* Email */}
               <div className="space-y-2">
                 <Label htmlFor="email" className="text-slate-700 font-medium">Email</Label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="name@iu.edu"
-                    className={`pl-10 h-12 bg-white/50 border-slate-200/60 focus:bg-white/80 transition-all ${
-                      errors.email ? "border-red-300 focus:border-red-500 focus:ring-red-200" : ""
-                    }`}
-                    value={email}
-                    onChange={(e) => {
-                      setEmail(e.target.value);
-                      if (errors.email) setErrors({ ...errors, email: null });
-                    }}
-                  />
-                </div>
-                {errors.email && (
-                  <p className="text-sm text-red-500 flex items-center gap-1.5 animate-in slide-in-from-top-1">
-                    <AlertCircle className="h-4 w-4" />
-                    {errors.email}
-                  </p>
-                )}
+                <Input
+                  id="email" name="email" type="email" placeholder="name@domain.com"
+                  className={`h-11 bg-white/50 border-slate-200/60 ${errors.email ? "border-red-300" : ""}`}
+                  value={formData.email} onChange={handleInputChange}
+                />
+                 {errors.email && <p className="text-xs text-red-500">{errors.email}</p>}
               </div>
+            </div>
+
+            {/* Conditionally Rendered Fields */}
+            {role === "STUDENT" ? (
+              <div className="space-y-5 pt-2 border-t border-slate-100">
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="gender" className="text-slate-700 font-medium">Gender</Label>
+                    <select
+                      id="gender" name="gender"
+                      className="w-full h-11 px-3 py-2 bg-white/50 border-slate-200/60 border rounded-lg text-sm outline-none focus:border-primary"
+                      value={formData.gender} onChange={handleInputChange}
+                    >
+                      <option value="MALE">Male</option>
+                      <option value="FEMALE">Female</option>
+                      <option value="OTHER">Other</option>
+                    </select>
+                  </div>
+                  <div className="space-y-2 col-span-2">
+                    <Label htmlFor="birthday" className="text-slate-700 font-medium">Birthday</Label>
+                    <Input
+                      id="birthday" name="birthday" type="date"
+                      className={`h-11 ${errors.birthday ? "border-red-300" : ""}`}
+                      value={formData.birthday} onChange={handleInputChange}
+                    />
+                     {errors.birthday && <p className="text-xs text-red-500">{errors.birthday}</p>}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="studentCode" className="text-slate-700 font-medium">Student Code</Label>
+                  <Input
+                    id="studentCode" name="studentCode" type="text" placeholder="STU-10001"
+                    className={`h-11 ${errors.studentCode ? "border-red-300" : ""}`}
+                    value={formData.studentCode} onChange={handleInputChange}
+                  />
+                  {errors.studentCode && <p className="text-xs text-red-500">{errors.studentCode}</p>}
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-slate-700 font-medium">Address</Label>
+                  <div className="grid grid-cols-6 gap-2">
+                    <Input name="street" placeholder="Street" value={formData.street} onChange={handleInputChange} className={`col-span-3 h-11 ${errors.street ? "border-red-300" : ""}`} />
+                    <Input name="city" placeholder="City" value={formData.city} onChange={handleInputChange} className={`col-span-2 h-11 ${errors.city ? "border-red-300" : ""}`} />
+                    <Input name="country" placeholder="Country" value={formData.country} onChange={handleInputChange} className={`col-span-1 h-11 ${errors.country ? "border-red-300" : ""}`} />
+                  </div>
+                  {(errors.street || errors.city || errors.country) && <p className="text-xs text-red-500">Full address details are required</p>}
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-5 pt-2 border-t border-slate-100">
+                <div className="space-y-2">
+                  <Label htmlFor="department" className="text-slate-700 font-medium">Department</Label>
+                  <Input
+                    id="department" name="department" type="text" placeholder="e.g. Computer Science"
+                    className={`h-11 ${errors.department ? "border-red-300" : ""}`}
+                    value={formData.department} onChange={handleInputChange}
+                  />
+                  {errors.department && <p className="text-xs text-red-500">{errors.department}</p>}
+                </div>
+              </div>
+            )}
+
+            <div className="grid grid-cols-2 gap-4 pt-2 border-t border-slate-100">
+              {/* Password */}
               <div className="space-y-2">
                 <Label htmlFor="password" className="text-slate-700 font-medium">Password</Label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
                   <Input
-                    id="password"
+                    id="password" name="password"
                     type={showPassword ? "text" : "password"}
                     placeholder="••••••••"
-                    className={`pl-10 pr-10 h-12 bg-white/50 border-slate-200/60 focus:bg-white/80 transition-all ${
-                      errors.password ? "border-red-300 focus:border-red-500 focus:ring-red-200" : ""
-                    }`}
-                    value={password}
-                    onChange={(e) => {
-                      setPassword(e.target.value);
-                      if (errors.password) setErrors({ ...errors, password: null });
-                    }}
+                    className={`h-11 pr-10 bg-white/50 border-slate-200/60 ${errors.password ? "border-red-300" : ""}`}
+                    value={formData.password} onChange={handleInputChange}
                   />
                   <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400 hover:text-slate-600 transition-colors flex items-center justify-center p-0 bg-transparent border-none"
+                    type="button" onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
                   >
-                    {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
                 </div>
-                {errors.password && (
-                  <p className="text-sm text-red-500 flex items-center gap-1.5 animate-in slide-in-from-top-1">
-                    <AlertCircle className="h-4 w-4" />
-                    {errors.password}
-                  </p>
-                )}
+                 {errors.password && <p className="text-xs text-red-500">{errors.password}</p>}
+              </div>
+
+              {/* Confirm Password */}
+              <div className="space-y-2">
+                <Label htmlFor="confirmPassword" className="text-slate-700 font-medium">Confirm Password</Label>
+                <div className="relative">
+                  <Input
+                    id="confirmPassword" name="confirmPassword"
+                    type={showConfirmPassword ? "text" : "password"}
+                    placeholder="••••••••"
+                    className={`h-11 pr-10 bg-white/50 border-slate-200/60 ${errors.confirmPassword ? "border-red-300" : ""}`}
+                    value={formData.confirmPassword} onChange={handleInputChange}
+                  />
+                  <button
+                    type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  >
+                    {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+                 {errors.confirmPassword && <p className="text-xs text-red-500">{errors.confirmPassword}</p>}
               </div>
             </div>
+
             <Button
               type="submit"
-              className="w-full h-12 text-base font-semibold rounded-xl bg-gradient-to-r from-primary to-secondary hover:opacity-90 shadow-lg shadow-primary/25 transition-all active:scale-[0.98]"
-              disabled={isLoading}
+              className="w-full h-12 mt-4 text-base font-semibold rounded-xl bg-gradient-to-r from-primary to-secondary hover:opacity-90 shadow-lg shadow-primary/25 transition-all"
+              disabled={registerMutation.isPending}
             >
-              {isLoading ? (
-                <span className="flex items-center gap-2">
-                  <svg className="animate-spin h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                  </svg>
-                  Creating account...
-                </span>
-              ) : (
-                "Sign Up"
-              )}
+              {registerMutation.isPending ? "Creating Account..." : "Sign Up"}
             </Button>
           </form>
         </CardContent>
         <CardFooter className="flex flex-col space-y-4 pb-8">
-          <div className="relative w-full">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-slate-200/60"></div>
-            </div>
-            <div className="relative flex justify-center text-sm">
-              <span className="bg-transparent px-2 text-slate-500 glass-panel rounded-full">
-                Or register with
-              </span>
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-4 w-full">
-            <Button variant="outline" className="h-11 bg-white/50 border-slate-200 hover:bg-white/80">
-              <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
-                <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
-                <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
-                <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
-                <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
-              </svg>
-              Google
-            </Button>
-            <Button variant="outline" className="h-11 bg-white/50 border-slate-200 hover:bg-white/80">
-              <svg className="mr-2 h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" />
-              </svg>
-              GitHub
-            </Button>
-          </div>
-          <div className="mt-4 text-center text-sm text-slate-500">
+          <div className="text-center text-sm text-slate-500 w-full border-t border-slate-100 pt-6">
             Already have an account?{" "}
             <Link to="/login" className="font-semibold text-primary hover:text-secondary transition-colors">
               Sign in

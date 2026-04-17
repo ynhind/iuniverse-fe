@@ -1,25 +1,48 @@
 import React from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useCourses } from "@/contexts/CourseContext";
+import { useMyCoursesQuery, useUpdateCourseMutation, useDeleteCourseMutation } from "@/hooks/useTeacher";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { Plus, BookOpen, Edit, Send, PlayCircle, Eye, Beaker } from "lucide-react";
+import { Plus, BookOpen, Edit, Send, PlayCircle, Eye, Beaker, Trash2 } from "lucide-react";
 import { useToast } from "@/contexts/ToastContext";
 
 export function TeacherCourseList() {
-  const { courses, updateCourseStatus } = useCourses();
+  const { data, isLoading } = useMyCoursesQuery();
+  const updateCourseMutation = useUpdateCourseMutation();
+  const deleteCourseMutation = useDeleteCourseMutation();
   const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
+  const courses = data?.content || data || [];
+
   const handleSubmitForReview = (courseId) => {
-    updateCourseStatus(courseId, "Pending Review");
-    toast({
-      title: "Course Submitted",
-      description: "Your course has been submitted for admin review.",
-      variant: "success",
+    updateCourseMutation.mutate({ id: courseId, data: { status: "Pending Review" } }, {
+      onSuccess: () => {
+        toast({
+          title: "Course Submitted",
+          description: "Your course has been submitted for admin review.",
+          variant: "success",
+        });
+      },
+      onError: () => {
+        toast({
+          title: "Submission Failed",
+          description: "There was an error submitting your course. Please try again.",
+          variant: "error",
+        });
+      }
     });
+  };
+
+  const handleDeleteCourse = (courseId) => {
+    if (confirm("Are you sure you want to delete this course?")) {
+      deleteCourseMutation.mutate(courseId, {
+        onSuccess: () => toast({ title: "Deleted", description: "Course removed.", variant: "success" }),
+        onError: () => toast({ title: "Error", description: "Could not delete course.", variant: "error" })
+      });
+    }
   };
 
   const statusColors = {
@@ -43,7 +66,12 @@ export function TeacherCourseList() {
       </div>
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {courses.length === 0 ? (
+        {isLoading ? (
+          <div className="col-span-full py-12 text-center text-slate-500 glass rounded-2xl">
+            <span className="w-8 h-8 border-4 border-slate-300 border-t-primary rounded-full animate-spin inline-block mb-4" />
+            <p className="text-lg font-medium">Loading courses...</p>
+          </div>
+        ) : courses.length === 0 ? (
           <div className="col-span-full py-12 text-center text-slate-500 glass rounded-2xl">
             <Beaker className="mx-auto h-12 w-12 text-slate-300 mb-4" />
             <p className="text-lg font-medium">No courses yet</p>
@@ -55,7 +83,7 @@ export function TeacherCourseList() {
               <div className="relative aspect-video overflow-hidden">
                 <img
                   src={course.thumbnail || "https://images.unsplash.com/photo-1518770660439-4636190af475?q=80&w=3270&auto=format&fit=crop"}
-                  alt={course.title}
+                  alt={course.courseName || course.title}
                   className="object-cover w-full h-full transition-transform duration-500 group-hover:scale-105"
                 />
                 <div className="absolute top-4 right-4">
@@ -65,12 +93,19 @@ export function TeacherCourseList() {
                 </div>
               </div>
               <CardHeader className="flex-1">
-                <div className="flex items-center gap-2 text-sm text-primary mb-2 font-medium">
-                  <BookOpen className="h-4 w-4" />
-                  {course.category || "Uncategorized"}
+                <div className="flex items-center justify-between gap-2 text-sm text-primary mb-2 font-medium">
+                  <div className="flex items-center gap-1">
+                    <BookOpen className="h-4 w-4" />
+                    {course.category || "Uncategorized"}
+                  </div>
+                  {course.joinCode && (
+                    <span className="px-2 py-0.5 bg-primary/10 rounded-md text-xs font-semibold">
+                      Code: {course.joinCode}
+                    </span>
+                  )}
                 </div>
                 <CardTitle className="line-clamp-2 leading-snug hover:text-primary transition-colors cursor-pointer" onClick={() => navigate(`/create-course?id=${course.id}`)}>
-                  {course.title || "Untitled Course"}
+                  {course.courseName || course.title || "Untitled Course"}
                 </CardTitle>
                 <CardDescription className="line-clamp-2 mt-2">
                   {course.description || "No description provided."}
@@ -89,15 +124,26 @@ export function TeacherCourseList() {
                     Edit
                   </Button>
                   {(course.status === "Draft" || course.status === "Rejected") && (
-                    <Button 
-                      variant="primary" 
-                      size="sm" 
-                      className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white" 
-                      onClick={() => handleSubmitForReview(course.id)}
-                    >
-                      <Send className="h-4 w-4 mr-2" />
-                      Submit
-                    </Button>
+                    <>
+                      <Button 
+                        variant="primary" 
+                        size="sm" 
+                        className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white" 
+                        onClick={() => handleSubmitForReview(course.id)}
+                      >
+                        <Send className="h-4 w-4 mr-2" />
+                        Submit
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="icon" 
+                        className="border-red-200 text-red-500 hover:bg-red-50 hover:text-red-600"
+                        onClick={() => handleDeleteCourse(course.id)}
+                        disabled={deleteCourseMutation.isPending}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </>
                   )}
                   {course.status === "Approved" && (
                      <Button variant="outline" size="sm" className="flex-1 bg-green-50 text-green-700 border-green-200 hover:bg-green-100">

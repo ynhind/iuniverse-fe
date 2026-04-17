@@ -1,6 +1,7 @@
 import React from "react";
 import { Search, Bell, ChevronRight } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useLogoutMutation } from "@/hooks/useAuth";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/Avatar";
@@ -22,7 +23,14 @@ import { useLocation, Link } from "react-router-dom";
 
 export function Header() {
   const { user, switchRole, logout } = useAuth();
+  const logoutMutation = useLogoutMutation();
   const location = useLocation();
+
+  const handleLogout = () => {
+    logoutMutation.mutate(undefined, {
+      onSettled: () => logout()
+    });
+  };
 
   const pathnames = location.pathname.split("/").filter((x) => x);
   const avatarUrl = `https://api.dicebear.com/7.x/adventurer/svg?seed=${user?.name || "default"}`;
@@ -170,12 +178,12 @@ export function Header() {
             >
               Admin View
             </DropdownMenuItem>
-            <DropdownMenuSeparator className="bg-white/20" />
             <DropdownMenuItem
               className="rounded-xl cursor-pointer text-destructive focus:text-destructive"
-              onClick={logout}
+              onClick={handleLogout}
+              disabled={logoutMutation.isPending}
             >
-              Log out
+              {logoutMutation.isPending ? "Logging out..." : "Log out"}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
