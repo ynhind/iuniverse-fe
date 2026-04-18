@@ -5,9 +5,9 @@ import { Header } from "./Header";
 import { useAuth } from "@/contexts/AuthContext";
 
 export function MainLayout() {
-  const { user } = useAuth();
+  const { user, accessToken } = useAuth();
 
-  if (!user) {
+  if (!user || !accessToken) {
     return <Navigate to="/login" replace />;
   }
 
@@ -20,6 +20,7 @@ export function MainLayout() {
       </div>
 
       <Sidebar />
+
       <div className="relative z-10 flex flex-1 flex-col overflow-hidden">
         <Header />
         <main className="flex-1 overflow-y-auto p-6 md:p-8">

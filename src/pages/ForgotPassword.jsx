@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
+import { useForgotPasswordMutation } from "@/hooks/useAuth";
 import { useToast } from "@/contexts/ToastContext";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -9,9 +10,9 @@ import { Mail, KeyRound, AlertCircle, ArrowLeft } from "lucide-react";
 
 export function ForgotPassword() {
   const [email, setEmail] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
   const [isSent, setIsSent] = useState(false);
   const [errors, setErrors] = useState({});
+  const forgotPasswordMutation = useForgotPasswordMutation();
   const { toast } = useToast();
 
   const validate = () => {
@@ -31,16 +32,23 @@ export function ForgotPassword() {
       return;
     }
 
-    setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
-      setIsSent(true);
-      toast({
-        title: "Link Sent",
-        description: "Check your email for the reset link.",
-        variant: "success",
-      });
-    }, 1500);
+    forgotPasswordMutation.mutate(email, {
+      onSuccess: () => {
+        setIsSent(true);
+        toast({
+          title: "Link Sent",
+          description: "Check your email for the reset link.",
+          variant: "success",
+        });
+      },
+      onError: (err) => {
+        toast({
+          title: "Failed to send link",
+          description: err?.response?.data?.message || "An unexpected error occurred. Please try again.",
+          variant: "error",
+        });
+      }
+    });
   };
 
   return (
@@ -94,9 +102,9 @@ export function ForgotPassword() {
               <Button
                 type="submit"
                 className="w-full h-12 text-base font-semibold rounded-xl bg-gradient-to-r from-primary to-secondary hover:opacity-90 shadow-lg shadow-primary/25 transition-all active:scale-[0.98]"
-                disabled={isLoading}
+                disabled={forgotPasswordMutation.isPending}
               >
-                {isLoading ? (
+                {forgotPasswordMutation.isPending ? (
                   <span className="flex items-center gap-2">
                     <svg className="animate-spin h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />

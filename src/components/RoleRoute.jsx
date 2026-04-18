@@ -1,16 +1,31 @@
 import React from "react";
-import { Navigate } from "react-router-dom";
+import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 
-export function RoleRoute({ allowedRoles, children }) {
-  const { user } = useAuth();
+const getDefaultRouteByRole = (role) => {
+  switch (String(role || "").toUpperCase()) {
+    case "ADMIN":
+      return "/admin/review";
+    case "TEACHER":
+      return "/teacher/courses";
+    default:
+      return "/";
+  }
+};
 
-  if (!user) {
-    return <Navigate to="/login" replace />;
+export function RoleRoute({ allowedRoles = [], children }) {
+  const { user, isAuthenticated } = useAuth();
+  const location = useLocation();
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  if (!allowedRoles.includes(user.role)) {
-    return <Navigate to="/" replace />;
+  const userRole = String(user?.role || "STUDENT").toUpperCase();
+  const normalizedAllowedRoles = allowedRoles.map((role) => String(role).toUpperCase());
+
+  if (!normalizedAllowedRoles.includes(userRole)) {
+    return <Navigate to={getDefaultRouteByRole(userRole)} replace />;
   }
 
   return children;
