@@ -15,7 +15,12 @@ export function TeacherCourseList() {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const courses = data?.content || data || [];
+  let extractedData = data;
+  if (data && typeof data === 'object' && !Array.isArray(data)) {
+    extractedData = data.content || data.data || data.courses || [];
+  }
+  const courses = extractedData;
+  const safeCourses = Array.isArray(courses) ? courses : [];
 
   const handleSubmitForReview = (courseId) => {
     updateCourseMutation.mutate({ id: courseId, data: { status: "Pending Review" } }, {
@@ -71,14 +76,14 @@ export function TeacherCourseList() {
             <span className="w-8 h-8 border-4 border-slate-300 border-t-primary rounded-full animate-spin inline-block mb-4" />
             <p className="text-lg font-medium">Loading courses...</p>
           </div>
-        ) : courses.length === 0 ? (
+        ) : safeCourses.length === 0 ? (
           <div className="col-span-full py-12 text-center text-slate-500 glass rounded-2xl">
             <Beaker className="mx-auto h-12 w-12 text-slate-300 mb-4" />
             <p className="text-lg font-medium">No courses yet</p>
             <p className="text-sm">Start creating your first course right now!</p>
           </div>
         ) : (
-          courses.map((course) => (
+          safeCourses.map((course) => (
             <Card key={course.id} className="overflow-hidden transition-all hover:shadow-xl hover:-translate-y-1 glass border-white/40 group flex flex-col">
               <div className="relative aspect-video overflow-hidden">
                 <img
@@ -119,9 +124,13 @@ export function TeacherCourseList() {
               </CardHeader>
               <CardFooter className="bg-slate-50/50 border-t border-slate-100/50 p-4 flex items-center justify-between gap-2 mt-auto">
                 <div className="flex space-x-2 w-full">
+                  <Button variant="outline" size="sm" className="flex-1 border-slate-200" onClick={() => navigate(`/manage-course?id=${course.id}`)}>
+                    <BookOpen className="h-4 w-4 mr-2 text-slate-500" />
+                    Manage Content
+                  </Button>
                   <Button variant="outline" size="sm" className="flex-1 border-slate-200" onClick={() => navigate(`/create-course?id=${course.id}`)}>
                     <Edit className="h-4 w-4 mr-2 text-slate-500" />
-                    Edit
+                    Edit Info
                   </Button>
                   {(course.status === "Draft" || course.status === "Rejected") && (
                     <>

@@ -18,8 +18,8 @@ import {
   StudentSchedule,
   StudentGradebook,
 } from '@/pages/student';
-import {
-  CourseCreator,
+  import {CourseCreator,
+  CourseManager,
   TeacherCourseList,
   StudentSubmissions,
 } from '@/pages/teacher';
@@ -119,6 +119,14 @@ function App() {
                       element={
                         <RoleRoute allowedRoles={['TEACHER', 'ADMIN']}>
                           <CourseCreator />
+                        </RoleRoute>
+                      }
+                    />
+                    <Route
+                      path="/manage-course"
+                      element={
+                        <RoleRoute allowedRoles={['TEACHER', 'ADMIN']}>
+                          <CourseManager />
                         </RoleRoute>
                       }
                     />
