@@ -98,7 +98,7 @@ export const useDeleteModuleMutation = () => {
 export const useAddMaterialMutation = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ moduleId, data }) => teacherApi.addMaterial(moduleId, data),
+    mutationFn: ({ id, data }) => teacherApi.addMaterial(id, data),
     onSuccess: (_, variables) => {
       if (variables.courseId) {
         queryClient.invalidateQueries({ queryKey: ['course', variables.courseId] });
@@ -201,5 +201,11 @@ export const useDeleteQuestionMutation = () => {
          queryClient.invalidateQueries({ queryKey: ['course', variables.courseId] });
       }
     },
+  });
+};
+
+export const useUploadFileMutation = () => {
+  return useMutation({
+    mutationFn: teacherApi.uploadFile,
   });
 };

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { CurriculumBuilder } from "./CurriculumBuilder";
 import { VideoModal, ResourceModal, AssignmentModal, QuizModal } from "./Modals/ItemModals";
-import { ArrowLeft, Save, Send, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, Save, Send, CheckCircle2, Trash2 } from "lucide-react";
 import { useToast } from "@/contexts/ToastContext";
 import { useAuth } from "@/contexts/AuthContext";
 import {
@@ -11,7 +11,8 @@ import {
   useCreateModuleMutation,
   useUpdateModuleMutation,
   useAddMaterialMutation,
-  useCreateProblemSetMutation
+  useCreateProblemSetMutation,
+  useDeleteCourseMutation
 } from "@/hooks/useTeacher";
 
 export function CourseManager() {
@@ -28,6 +29,7 @@ export function CourseManager() {
   const createModuleMutation = useCreateModuleMutation();
   const addMaterialMutation = useAddMaterialMutation();
   const createProblemSetMutation = useCreateProblemSetMutation();
+  const deleteCourseMutation = useDeleteCourseMutation();
 
   const [isPublishing, setIsPublishing] = useState(false);
   const [targetModuleId, setTargetModuleId] = useState(null);
@@ -74,6 +76,18 @@ export function CourseManager() {
     } catch (e) {
       setIsPublishing(false);
       toast({ title: "Submission Failed", description: "An error occurred.", variant: "error" });
+    }
+  };
+
+  const handleDeleteCourse = async () => {
+    if (window.confirm("Are you sure you want to delete this course? This action cannot be undone.")) {
+      try {
+        await deleteCourseMutation.mutateAsync(courseId);
+        toast({ title: "Course Deleted", description: "The course has been permanently removed.", variant: "success" });
+        navigate("/teacher/courses");
+      } catch (err) {
+        toast({ title: "Delete Failed", description: "Could not delete the course.", variant: "error" });
+      }
     }
   };
 
@@ -146,6 +160,14 @@ export function CourseManager() {
         </div>
         
         <div className="flex items-center gap-3">
+          <button 
+            onClick={handleDeleteCourse}
+            disabled={deleteCourseMutation.isPending}
+            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-red-600 bg-red-50 rounded-xl hover:bg-red-100 transition-colors border border-red-200 disabled:opacity-50"
+          >
+            <Trash2 className="w-4 h-4" />
+            <span className="hidden sm:inline">Delete</span>
+          </button>
           <button 
             onClick={handlePublish}
             disabled={isPublishing} 

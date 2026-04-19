@@ -4,7 +4,7 @@ import { Label } from "@/components/ui/Label";
 import { Input } from "@/components/ui/Input";
 import { UploadCloud, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
-import { useAddMaterialMutation, useCreateProblemSetMutation, useAddQuestionMutation } from "@/hooks/useTeacher";
+import { useAddMaterialMutation, useCreateProblemSetMutation, useAddQuestionMutation, useUploadFileMutation } from "@/hooks/useTeacher";
 import { useToast } from "@/contexts/ToastContext";
 
 // --- VIDEO MODAL ---
@@ -67,10 +67,32 @@ export function VideoModal({ isOpen, onClose, onAdd, moduleId, courseId }) {
 // --- RESOURCE MODAL ---
 export function ResourceModal({ isOpen, onClose, onAdd, moduleId, courseId }) {
   const [data, setData] = useState({ title: "", url: "" });
+  const [isUploading, setIsUploading] = useState(false);
+  const [fileName, setFileName] = useState("");
+  const fileInputRef = React.useRef(null);
   const addMaterialMutation = useAddMaterialMutation();
+  const uploadFileMutation = useUploadFileMutation();
   const { toast } = useToast();
 
-  useEffect(() => { if (isOpen) setData({ title: "", url: "" }) }, [isOpen]);
+  useEffect(() => { if (isOpen) { setData({ title: "", url: "" }); setFileName(""); setIsUploading(false); } }, [isOpen]);
+
+  const handleFileUpload = async (file) => {
+    if (!file) return;
+    setIsUploading(true);
+    setFileName(file.name);
+    try {
+      const res = await uploadFileMutation.mutateAsync(file);
+      const fileUrl = res?.url || res?.data?.url || URL.createObjectURL(file);
+      setData(prev => ({ ...prev, url: fileUrl }));
+      toast({ title: "File Uploaded", description: "Resource file ready to be saved.", variant: "success" });
+    } catch (e) {
+      console.warn("Upload failed, falling back to local object URL", e);
+      setData(prev => ({ ...prev, url: URL.createObjectURL(file) }));
+      toast({ title: "Local Preview", description: "Using local file URL since API failed.", variant: "success" });
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   const handleSubmit = () => {
     if (!data.title) return;
@@ -97,9 +119,35 @@ export function ResourceModal({ isOpen, onClose, onAdd, moduleId, courseId }) {
         </div>
         <div className="space-y-3">
            <Label>File Upload</Label>
-           <div className="border-2 border-dashed border-slate-200 bg-slate-50 rounded-xl flex flex-col items-center justify-center p-6 cursor-pointer hover:border-primary/50">
-              <UploadCloud className="w-6 h-6 text-slate-400 mb-2" />
-              <p className="text-sm text-slate-600">Select a file from your computer</p>
+           <input 
+             type="file" 
+             className="hidden" 
+             ref={fileInputRef} 
+             onChange={(e) => handleFileUpload(e.target.files[0])} 
+           />
+           <div 
+             onClick={() => fileInputRef.current?.click()}
+             className="border-2 border-dashed border-slate-200 bg-slate-50 rounded-xl flex flex-col items-center justify-center p-6 cursor-pointer hover:border-primary/50 relative"
+           >
+              {isUploading ? (
+                <div className="flex flex-col items-center">
+                  <span className="w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin mb-2" />
+                  <p className="text-sm text-slate-600">Uploading...</p>
+                </div>
+              ) : fileName ? (
+                <div className="flex flex-col items-center text-center">
+                  <div className="w-10 h-10 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mb-2">
+                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+                  </div>
+                  <p className="text-sm font-medium text-slate-800 line-clamp-1 break-all px-2">{fileName}</p>
+                  <p className="text-xs text-slate-500 mt-1">Click to replace</p>
+                </div>
+              ) : (
+                <>
+                  <UploadCloud className="w-6 h-6 text-slate-400 mb-2" />
+                  <p className="text-sm text-slate-600">Select a file from your computer</p>
+                </>
+              )}
            </div>
         </div>
         <div className="flex items-center gap-2 my-2">

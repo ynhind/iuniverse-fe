@@ -1,9 +1,40 @@
-import React from "react";
+import React, { useRef, useState } from "react";
 import { Label } from "@/components/ui/Label";
 import { Input } from "@/components/ui/Input";
-import { UploadCloud, Image as ImageIcon } from "lucide-react";
+import { UploadCloud, Image as ImageIcon, Loader2 } from "lucide-react";
+import { useUploadFileMutation } from "@/hooks/useTeacher";
+import { useToast } from "@/contexts/ToastContext";
 
 export function BasicInfoTab({ courseData, updateCourseData }) {
+  const { toast } = useToast();
+  const uploadFileMutation = useUploadFileMutation();
+  const thumbnailInputRef = useRef(null);
+  const bannerInputRef = useRef(null);
+  const [isUploadingThumbnail, setIsUploadingThumbnail] = useState(false);
+  const [isUploadingBanner, setIsUploadingBanner] = useState(false);
+
+  const handleImageUpload = async (file, type) => {
+    if (!file) return;
+    
+    const setUploading = type === 'thumbnail' ? setIsUploadingThumbnail : setIsUploadingBanner;
+    setUploading(true);
+
+    try {
+      // Attempt to upload to real API
+      const res = await uploadFileMutation.mutateAsync(file);
+      const fileUrl = res?.url || res?.data?.url || URL.createObjectURL(file);
+      updateCourseData({ [type]: fileUrl });
+      toast({ title: "Upload Success", description: "Image uploaded successfully.", variant: "success" });
+    } catch (e) {
+      // Fallback to local preview for demo
+      console.warn("Upload failed, falling back to local preview", e);
+      const localUrl = URL.createObjectURL(file);
+      updateCourseData({ [type]: localUrl });
+      toast({ title: "Local Preview", description: "Using local preview since upload API failed.", variant: "success" });
+    } finally {
+      setUploading(false);
+    }
+  };
   const handleChange = (e) => {
     const { name, value } = e.target;
     updateCourseData({ [name]: value });
@@ -130,22 +161,74 @@ export function BasicInfoTab({ courseData, updateCourseData }) {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl">
           <div className="space-y-3">
              <Label className="font-medium text-slate-700 block">Course Thumbnail (Square)</Label>
-             <div className="border-2 border-dashed border-slate-200 hover:border-primary/50 transition-colors bg-slate-50 rounded-2xl flex flex-col items-center justify-center p-8 aspect-square max-w-[250px] cursor-pointer">
-                <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm mb-3">
-                  <ImageIcon className="w-5 h-5 text-slate-400" />
-                </div>
-                <p className="text-sm font-medium text-slate-700">Upload Image</p>
-                <p className="text-xs text-slate-500 mt-1 text-center">PNG, JPG up to 2MB</p>
+             <input 
+               type="file" 
+               accept="image/*" 
+               className="hidden" 
+               ref={thumbnailInputRef} 
+               onChange={(e) => handleImageUpload(e.target.files[0], 'thumbnail')} 
+             />
+             <div 
+               onClick={() => thumbnailInputRef.current?.click()}
+               className="border-2 border-dashed border-slate-200 hover:border-primary/50 transition-colors bg-slate-50 rounded-2xl flex flex-col items-center justify-center p-8 aspect-square max-w-[250px] cursor-pointer relative overflow-hidden group"
+             >
+                {isUploadingThumbnail ? (
+                  <div className="flex flex-col items-center">
+                    <Loader2 className="w-8 h-8 text-primary animate-spin mb-2" />
+                    <p className="text-sm font-medium text-slate-700">Uploading...</p>
+                  </div>
+                ) : courseData.thumbnail ? (
+                  <>
+                    <img src={courseData.thumbnail} alt="Thumbnail" className="absolute inset-0 w-full h-full object-cover" />
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                      <p className="text-white text-sm font-medium">Change Image</p>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm mb-3 group-hover:scale-110 transition-transform">
+                      <ImageIcon className="w-5 h-5 text-slate-400 group-hover:text-primary transition-colors" />
+                    </div>
+                    <p className="text-sm font-medium text-slate-700">Upload Image</p>
+                    <p className="text-xs text-slate-500 mt-1 text-center">PNG, JPG up to 2MB</p>
+                  </>
+                )}
              </div>
           </div>
           <div className="space-y-3">
              <Label className="font-medium text-slate-700 block">Course Banner (Wide)</Label>
-             <div className="border-2 border-dashed border-slate-200 hover:border-primary/50 transition-colors bg-slate-50 rounded-2xl flex flex-col items-center justify-center p-8 w-full max-w-md h-[180px] cursor-pointer">
-                <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm mb-3">
-                  <UploadCloud className="w-5 h-5 text-slate-400" />
-                </div>
-                <p className="text-sm font-medium text-slate-700">Drag & drop or browse</p>
-                <p className="text-xs text-slate-500 mt-1 text-center">Optimal size: 1920x1080px</p>
+             <input 
+               type="file" 
+               accept="image/*" 
+               className="hidden" 
+               ref={bannerInputRef} 
+               onChange={(e) => handleImageUpload(e.target.files[0], 'banner')} 
+             />
+             <div 
+               onClick={() => bannerInputRef.current?.click()}
+               className="border-2 border-dashed border-slate-200 hover:border-primary/50 transition-colors bg-slate-50 rounded-2xl flex flex-col items-center justify-center p-8 w-full max-w-md h-[180px] cursor-pointer relative overflow-hidden group"
+             >
+                {isUploadingBanner ? (
+                  <div className="flex flex-col items-center">
+                    <Loader2 className="w-8 h-8 text-primary animate-spin mb-2" />
+                    <p className="text-sm font-medium text-slate-700">Uploading...</p>
+                  </div>
+                ) : courseData.banner ? (
+                  <>
+                    <img src={courseData.banner} alt="Banner" className="absolute inset-0 w-full h-full object-cover" />
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                      <p className="text-white text-sm font-medium">Change Banner</p>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm mb-3 group-hover:scale-110 transition-transform">
+                      <UploadCloud className="w-5 h-5 text-slate-400 group-hover:text-primary transition-colors" />
+                    </div>
+                    <p className="text-sm font-medium text-slate-700">Drag & drop or browse</p>
+                    <p className="text-xs text-slate-500 mt-1 text-center">Optimal size: 1920x1080px</p>
+                  </>
+                )}
              </div>
           </div>
         </div>

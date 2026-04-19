@@ -46,8 +46,8 @@ export const teacherApi = {
     return response.data;
   },
 
-  addMaterial: async (moduleId, data) => {
-    const response = await axiosInstance.post(`/course/module/${moduleId}/material`, data);
+  addMaterial: async (id, data) => {
+    const response = await axiosInstance.post(`/course/module/${id}/material`, data);
     return response.data;
   },
 
@@ -88,6 +88,17 @@ export const teacherApi = {
 
   deleteQuestion: async (questionId) => {
     const response = await axiosInstance.delete(`/course/question/${questionId}`);
+    return response.data;
+  },
+
+  uploadFile: async (file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await axiosInstance.post('/upload', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
     return response.data;
   },
 };
