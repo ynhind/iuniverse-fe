@@ -86,6 +86,7 @@ export function AuthProvider({ children }) {
   const [accessToken, setAccessToken] = useState(localStorage.getItem("accessToken") || null);
   const [refreshToken, setRefreshToken] = useState(localStorage.getItem("refreshToken") || null);
 
+  // Bootstrap from localStorage on mount
   useEffect(() => {
     const storedUser = localStorage.getItem("user");
     const storedAccessToken = localStorage.getItem("accessToken");
@@ -112,6 +113,33 @@ export function AuthProvider({ children }) {
     } else if (parsedUser) {
       setUser(parsedUser);
     }
+  }, []);
+
+  // Sync React state when axios interceptor silently refreshes the token
+  useEffect(() => {
+    const handleTokenRefreshed = (e) => {
+      const { accessToken: newAccess, refreshToken: newRefresh } = e.detail || {};
+      if (newAccess) {
+        setAccessToken(newAccess);
+        // Rebuild user object from the new token (role may change in theory)
+        setUser((prev) => buildUserFromToken(newAccess, prev));
+      }
+      if (newRefresh) setRefreshToken(newRefresh);
+    };
+
+    const handleAuthExpired = () => {
+      setUser(null);
+      setAccessToken(null);
+      setRefreshToken(null);
+    };
+
+    window.addEventListener("tokenRefreshed", handleTokenRefreshed);
+    window.addEventListener("authExpired", handleAuthExpired);
+
+    return () => {
+      window.removeEventListener("tokenRefreshed", handleTokenRefreshed);
+      window.removeEventListener("authExpired", handleAuthExpired);
+    };
   }, []);
 
   const login = (userData, access, refresh) => {
