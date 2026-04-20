@@ -1,7 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { teacherApi } from '../api/teacher.api';
+import { teacherApi } from '@/api/teacher.api';
 
-// --- QUERIES ---
+/* =========================
+   QUERY
+========================= */
 
 export const useMyCoursesQuery = () => {
   return useQuery({
@@ -10,74 +12,110 @@ export const useMyCoursesQuery = () => {
   });
 };
 
-export const useCourseDetailQuery = (id) => {
+export const useCourseDetailQuery = (courseId) => {
   return useQuery({
-    queryKey: ['course', id],
-    queryFn: () => teacherApi.getCourseDetail(id),
-    enabled: !!id,
+    queryKey: ['course', courseId],
+    queryFn: () => teacherApi.getCourseDetail(courseId),
+    enabled: !!courseId,
   });
 };
 
-export const useCourseStudentsQuery = (id) => {
+export const useCourseStudentsQuery = (courseId) => {
   return useQuery({
-    queryKey: ['course', id, 'students'],
-    queryFn: () => teacherApi.getCourseStudents(id),
-    enabled: !!id,
+    queryKey: ['course', courseId, 'students'],
+    queryFn: () => teacherApi.getCourseStudents(courseId),
+    enabled: !!courseId,
   });
 };
 
+export const useModuleProblemSetsQuery = (moduleId) => {
+  return useQuery({
+    queryKey: ['module', moduleId, 'problemSets'],
+    queryFn: () => teacherApi.getModuleProblemSets(moduleId),
+    enabled: !!moduleId,
+  });
+};
 
-// --- MUTATIONS ---
+/* =========================
+   COURSE
+========================= */
 
 export const useCreateCourseMutation = () => {
   const queryClient = useQueryClient();
+
   return useMutation({
     mutationFn: teacherApi.createCourse,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['teacher', 'myCourses'] });
+      queryClient.invalidateQueries({
+        queryKey: ['teacher', 'myCourses'],
+      });
     },
   });
 };
 
 export const useUpdateCourseMutation = () => {
   const queryClient = useQueryClient();
+
   return useMutation({
-    mutationFn: ({ id, data }) => teacherApi.updateCourse(id, data),
+    mutationFn: ({ id, data }) =>
+      teacherApi.updateCourse(id, data),
+
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['course', variables.id] });
-      queryClient.invalidateQueries({ queryKey: ['teacher', 'myCourses'] });
+      queryClient.invalidateQueries({
+        queryKey: ['course', variables.id],
+      });
+
+      queryClient.invalidateQueries({
+        queryKey: ['teacher', 'myCourses'],
+      });
     },
   });
 };
 
 export const useDeleteCourseMutation = () => {
   const queryClient = useQueryClient();
+
   return useMutation({
     mutationFn: teacherApi.deleteCourse,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['teacher', 'myCourses'] });
+      queryClient.invalidateQueries({
+        queryKey: ['teacher', 'myCourses'],
+      });
     },
   });
 };
 
+/* =========================
+   MODULE
+========================= */
+
 export const useCreateModuleMutation = () => {
   const queryClient = useQueryClient();
+
   return useMutation({
-    mutationFn: ({ courseId, data }) => teacherApi.createModule(courseId, data),
+    mutationFn: ({ courseId, data }) =>
+      teacherApi.createModule(courseId, data),
+
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['course', variables.courseId] });
+      queryClient.invalidateQueries({
+        queryKey: ['course', variables.courseId],
+      });
     },
   });
 };
 
 export const useUpdateModuleMutation = () => {
   const queryClient = useQueryClient();
+
   return useMutation({
-    // Needs courseId for invalidation optimally, passing it through variables is a common practice
-    mutationFn: ({ moduleId, data }) => teacherApi.updateModule(moduleId, data),
+    mutationFn: ({ moduleId, data }) =>
+      teacherApi.updateModule(moduleId, data),
+
     onSuccess: (_, variables) => {
       if (variables.courseId) {
-        queryClient.invalidateQueries({ queryKey: ['course', variables.courseId] });
+        queryClient.invalidateQueries({
+          queryKey: ['course', variables.courseId],
+        });
       }
     },
   });
@@ -85,35 +123,82 @@ export const useUpdateModuleMutation = () => {
 
 export const useDeleteModuleMutation = () => {
   const queryClient = useQueryClient();
+
   return useMutation({
-    mutationFn: ({ moduleId }) => teacherApi.deleteModule(moduleId),
+    mutationFn: ({ moduleId }) =>
+      teacherApi.deleteModule(moduleId),
+
     onSuccess: (_, variables) => {
       if (variables.courseId) {
-        queryClient.invalidateQueries({ queryKey: ['course', variables.courseId] });
+        queryClient.invalidateQueries({
+          queryKey: ['course', variables.courseId],
+        });
       }
     },
   });
 };
+
+/* =========================
+   MATERIAL
+========================= */
 
 export const useAddMaterialMutation = () => {
   const queryClient = useQueryClient();
+
   return useMutation({
-    mutationFn: ({ id, data }) => teacherApi.addMaterial(id, data),
+    mutationFn: ({ moduleId, data }) =>
+      teacherApi.addMaterial(moduleId, data),
+
     onSuccess: (_, variables) => {
       if (variables.courseId) {
-        queryClient.invalidateQueries({ queryKey: ['course', variables.courseId] });
+        queryClient.invalidateQueries({
+          queryKey: ['course', variables.courseId],
+        });
       }
     },
   });
 };
 
-export const useUpdateMaterialMutation = () => {
+export const useUploadMaterialMutation = () => {
   const queryClient = useQueryClient();
+
   return useMutation({
-    mutationFn: ({ moduleId, materialId, data }) => teacherApi.updateMaterial(moduleId, materialId, data),
+    mutationFn: teacherApi.uploadMaterial,
+
     onSuccess: (_, variables) => {
       if (variables.courseId) {
-        queryClient.invalidateQueries({ queryKey: ['course', variables.courseId] });
+        queryClient.invalidateQueries({
+          queryKey: ['course', variables.courseId],
+        });
+      }
+    },
+  });
+};
+
+/* alias tên cũ để khỏi lỗi import */
+export const useUploadFileMutation =
+  useUploadMaterialMutation;
+
+export const useUpdateMaterialMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      moduleId,
+      materialId,
+      data,
+    }) =>
+      teacherApi.updateMaterial(
+        moduleId,
+        materialId,
+        data
+      ),
+
+    onSuccess: (_, variables) => {
+      if (variables.courseId) {
+        queryClient.invalidateQueries({
+          queryKey: ['course', variables.courseId],
+        });
       }
     },
   });
@@ -121,23 +206,56 @@ export const useUpdateMaterialMutation = () => {
 
 export const useDeleteMaterialMutation = () => {
   const queryClient = useQueryClient();
+
   return useMutation({
-    mutationFn: ({ moduleId, materialId }) => teacherApi.deleteMaterial(moduleId, materialId),
+    mutationFn: ({
+      moduleId,
+      materialId,
+    }) =>
+      teacherApi.deleteMaterial(
+        moduleId,
+        materialId
+      ),
+
     onSuccess: (_, variables) => {
       if (variables.courseId) {
-        queryClient.invalidateQueries({ queryKey: ['course', variables.courseId] });
+        queryClient.invalidateQueries({
+          queryKey: ['course', variables.courseId],
+        });
       }
     },
   });
 };
 
+/* =========================
+   QUIZ / PROBLEM SET
+========================= */
+
 export const useCreateProblemSetMutation = () => {
   const queryClient = useQueryClient();
+
   return useMutation({
-    mutationFn: ({ moduleId, data }) => teacherApi.createProblemSet(moduleId, data),
+    mutationFn: ({ moduleId, data }) =>
+      teacherApi.createProblemSet(
+        moduleId,
+        data
+      ),
+
     onSuccess: (_, variables) => {
+      if (variables.moduleId) {
+        queryClient.invalidateQueries({
+          queryKey: [
+            'module',
+            variables.moduleId,
+            'problemSets',
+          ],
+        });
+      }
+
       if (variables.courseId) {
-        queryClient.invalidateQueries({ queryKey: ['course', variables.courseId] });
+        queryClient.invalidateQueries({
+          queryKey: ['course', variables.courseId],
+        });
       }
     },
   });
@@ -145,11 +263,32 @@ export const useCreateProblemSetMutation = () => {
 
 export const useUpdateProblemSetMutation = () => {
   const queryClient = useQueryClient();
+
   return useMutation({
-    mutationFn: ({ id, data }) => teacherApi.updateProblemSet(id, data),
+    mutationFn: ({
+      problemSetId,
+      data,
+    }) =>
+      teacherApi.updateProblemSet(
+        problemSetId,
+        data
+      ),
+
     onSuccess: (_, variables) => {
+      if (variables.moduleId) {
+        queryClient.invalidateQueries({
+          queryKey: [
+            'module',
+            variables.moduleId,
+            'problemSets',
+          ],
+        });
+      }
+
       if (variables.courseId) {
-        queryClient.invalidateQueries({ queryKey: ['course', variables.courseId] });
+        queryClient.invalidateQueries({
+          queryKey: ['course', variables.courseId],
+        });
       }
     },
   });
@@ -157,24 +296,67 @@ export const useUpdateProblemSetMutation = () => {
 
 export const useDeleteProblemSetMutation = () => {
   const queryClient = useQueryClient();
+
   return useMutation({
-    mutationFn: ({ id }) => teacherApi.deleteProblemSet(id),
+    mutationFn: ({
+      problemSetId,
+    }) =>
+      teacherApi.deleteProblemSet(
+        problemSetId
+      ),
+
     onSuccess: (_, variables) => {
+      if (variables.moduleId) {
+        queryClient.invalidateQueries({
+          queryKey: [
+            'module',
+            variables.moduleId,
+            'problemSets',
+          ],
+        });
+      }
+
       if (variables.courseId) {
-        queryClient.invalidateQueries({ queryKey: ['course', variables.courseId] });
+        queryClient.invalidateQueries({
+          queryKey: ['course', variables.courseId],
+        });
       }
     },
   });
 };
 
+/* =========================
+   QUESTION
+========================= */
+
 export const useAddQuestionMutation = () => {
   const queryClient = useQueryClient();
+
   return useMutation({
-    mutationFn: ({ problemSetId, data }) => teacherApi.addQuestion(problemSetId, data),
+    mutationFn: ({
+      problemSetId,
+      data,
+    }) =>
+      teacherApi.addQuestion(
+        problemSetId,
+        data
+      ),
+
     onSuccess: (_, variables) => {
-      // Invalidate specific course or problem set queries
+      if (variables.moduleId) {
+        queryClient.invalidateQueries({
+          queryKey: [
+            'module',
+            variables.moduleId,
+            'problemSets',
+          ],
+        });
+      }
+
       if (variables.courseId) {
-         queryClient.invalidateQueries({ queryKey: ['course', variables.courseId] });
+        queryClient.invalidateQueries({
+          queryKey: ['course', variables.courseId],
+        });
       }
     },
   });
@@ -182,11 +364,32 @@ export const useAddQuestionMutation = () => {
 
 export const useUpdateQuestionMutation = () => {
   const queryClient = useQueryClient();
+
   return useMutation({
-    mutationFn: ({ questionId, data }) => teacherApi.updateQuestion(questionId, data),
+    mutationFn: ({
+      questionId,
+      data,
+    }) =>
+      teacherApi.updateQuestion(
+        questionId,
+        data
+      ),
+
     onSuccess: (_, variables) => {
+      if (variables.moduleId) {
+        queryClient.invalidateQueries({
+          queryKey: [
+            'module',
+            variables.moduleId,
+            'problemSets',
+          ],
+        });
+      }
+
       if (variables.courseId) {
-         queryClient.invalidateQueries({ queryKey: ['course', variables.courseId] });
+        queryClient.invalidateQueries({
+          queryKey: ['course', variables.courseId],
+        });
       }
     },
   });
@@ -194,18 +397,29 @@ export const useUpdateQuestionMutation = () => {
 
 export const useDeleteQuestionMutation = () => {
   const queryClient = useQueryClient();
+
   return useMutation({
-    mutationFn: ({ questionId }) => teacherApi.deleteQuestion(questionId),
+    mutationFn: ({ questionId }) =>
+      teacherApi.deleteQuestion(
+        questionId
+      ),
+
     onSuccess: (_, variables) => {
-       if (variables.courseId) {
-         queryClient.invalidateQueries({ queryKey: ['course', variables.courseId] });
+      if (variables.moduleId) {
+        queryClient.invalidateQueries({
+          queryKey: [
+            'module',
+            variables.moduleId,
+            'problemSets',
+          ],
+        });
+      }
+
+      if (variables.courseId) {
+        queryClient.invalidateQueries({
+          queryKey: ['course', variables.courseId],
+        });
       }
     },
-  });
-};
-
-export const useUploadFileMutation = () => {
-  return useMutation({
-    mutationFn: teacherApi.uploadFile,
   });
 };

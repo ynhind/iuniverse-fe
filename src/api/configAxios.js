@@ -7,6 +7,7 @@ const axiosInstance = axios.create({
   timeout: 10000,
 });
 
+// ── Request interceptor: attach access token ──────────────────────────────────
 axiosInstance.interceptors.request.use(
   (config) => {
     const accessToken = localStorage.getItem('accessToken');
@@ -15,58 +16,112 @@ axiosInstance.interceptors.request.use(
     }
     return config;
   },
-  (error) => {
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
 
+// ── Refresh-token queue (prevents multiple simultaneous refresh calls) ─────────
+let isRefreshing = false;
+let pendingQueue = []; // [{ resolve, reject }]
+
+const processQueue = (error, token = null) => {
+  pendingQueue.forEach(({ resolve, reject }) => {
+    if (error) reject(error);
+    else resolve(token);
+  });
+  pendingQueue = [];
+};
+
+// ── Response interceptor: auto-refresh on 401 ────────────────────────────────
 axiosInstance.interceptors.response.use(
-  (response) => {
-    return response;
-  },
+  (response) => response,
   async (error) => {
     const originalRequest = error.config;
 
-    // If the error status is 401 and there is no originalRequest._retry flag,
-    // it means the token has expired and we need to refresh it
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true;
-
-      try {
-        const refreshToken = localStorage.getItem('refreshToken');
-        if (!refreshToken) {
-          throw new Error('No refresh token available');
-        }
-
-        // Use a new axios instance to avoid infinite loops if it fails
-        const response = await axios.post(`${baseURL}/auth/refresh-token`, {
-          refreshToken,
-        });
-
-        const { accessToken, refreshToken: newRefreshToken } = response.data;
-
-        // Store new tokens
-        localStorage.setItem('accessToken', accessToken);
-        // Optional: you might also receive a new refresh token
-        if (newRefreshToken) {
-          localStorage.setItem('refreshToken', newRefreshToken);
-        }
-
-        // Update the original request's authorization header and retry it
-        originalRequest.headers.Authorization = `Bearer ${accessToken}`;
-        return axiosInstance(originalRequest);
-      } catch (err) {
-        // If refresh fails, log the user out
-        localStorage.removeItem('accessToken');
-        localStorage.removeItem('refreshToken');
-        
-        // Redirect to login page or dispatch logout action
-        window.location.href = '/login';
-        return Promise.reject(err);
-      }
+    // Only intercept 401 that haven't been retried yet
+    if (error.response?.status !== 401 || originalRequest._retry) {
+      return Promise.reject(error);
     }
 
-    return Promise.reject(error);
+    const refreshToken = localStorage.getItem('refreshToken');
+
+    // No refresh token → log out immediately
+    if (!refreshToken) {
+      localStorage.removeItem('accessToken');
+      window.location.href = '/login';
+      return Promise.reject(error);
+    }
+
+    // If a refresh is already in-flight, queue this request
+    if (isRefreshing) {
+      return new Promise((resolve, reject) => {
+        pendingQueue.push({ resolve, reject });
+      })
+        .then((newToken) => {
+          originalRequest.headers.Authorization = `Bearer ${newToken}`;
+          return axiosInstance(originalRequest);
+        })
+        .catch((err) => Promise.reject(err));
+    }
+
+    // Mark as retried and start refresh
+    originalRequest._retry = true;
+    isRefreshing = true;
+
+    try {
+      // Use a plain axios instance to avoid triggering this interceptor again
+      const { data } = await axios.post(`${baseURL}/auth/refresh-token`, {
+        refreshToken,
+      });
+
+      // Support multiple response shapes: { accessToken } | { token } | { data: { accessToken } }
+      const newAccessToken =
+        data?.accessToken ||
+        data?.token ||
+        data?.data?.accessToken ||
+        data?.data?.token;
+
+      const newRefreshToken =
+        data?.refreshToken ||
+        data?.data?.refreshToken;
+
+      if (!newAccessToken) {
+        throw new Error('Refresh response did not include a new access token');
+      }
+
+      // Persist new tokens
+      localStorage.setItem('accessToken', newAccessToken);
+      if (newRefreshToken) {
+        localStorage.setItem('refreshToken', newRefreshToken);
+      }
+
+      // Notify AuthContext (or any listener) that tokens changed
+      window.dispatchEvent(
+        new CustomEvent('tokenRefreshed', {
+          detail: { accessToken: newAccessToken, refreshToken: newRefreshToken },
+        })
+      );
+
+      // Unblock the queue
+      processQueue(null, newAccessToken);
+
+      // Retry the original request with the new token
+      originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+      return axiosInstance(originalRequest);
+    } catch (err) {
+      processQueue(err, null);
+
+      // Refresh failed → clear session and redirect
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('refreshToken');
+      localStorage.removeItem('user');
+
+      window.dispatchEvent(new CustomEvent('authExpired'));
+      window.location.href = '/login';
+
+      return Promise.reject(err);
+    } finally {
+      isRefreshing = false;
+    }
   }
 );
 

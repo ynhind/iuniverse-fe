@@ -24,6 +24,7 @@ import {
   CourseManager,
   TeacherCourseList,
   StudentSubmissions,
+  QuizDetail,
 } from "@/pages/teacher";
 
 import { ReviewQueue, Announcements } from "@/pages/admin";
@@ -124,6 +125,15 @@ function App() {
                       element={
                         <RoleRoute allowedRoles={["TEACHER", "ADMIN"]}>
                           <CourseManager />
+                        </RoleRoute>
+                      }
+                    />
+
+                    <Route
+                      path="/teacher/quiz-detail"
+                      element={
+                        <RoleRoute allowedRoles={["TEACHER", "ADMIN"]}>
+                          <QuizDetail />
                         </RoleRoute>
                       }
                     />
