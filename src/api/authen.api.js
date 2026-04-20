@@ -7,7 +7,7 @@ export const authenApi = {
   },
 
   register: async (data) => {
-    const response = await axiosInstance.post('/user/add', data);
+    const response = await axiosInstance.post('/user/register', data);
     return response.data;
   },
 
