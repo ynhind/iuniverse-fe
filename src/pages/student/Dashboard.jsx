@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   Card,
@@ -8,6 +8,14 @@ import {
   CardTitle,
 } from "@/components/ui/Card";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/Dialog";
+import {
   BookOpen,
   Clock,
   CheckCircle2,
@@ -16,14 +24,201 @@ import {
   Award,
   Activity,
   Calendar,
+  PlayCircle,
+  LogOut,
+  Timer,
 } from "lucide-react";
 import { Progress } from "@/components/ui/Progress";
+import { Link } from "react-router-dom";
+import { Button } from "@/components/ui/Button";
+
+// Mock course progress data
+const COURSE_PROGRESS = [
+  {
+    id: "cs101",
+    name: "CS101: Introduction to Computer Science",
+    module: "Module 3: Data Structures",
+    progress: 65,
+    color: "bg-blue-100",
+    iconColor: "text-blue-600",
+  },
+  {
+    id: "math201",
+    name: "MATH201: Linear Algebra",
+    module: "Module 2: Matrices",
+    progress: 30,
+    color: "bg-purple-100",
+    iconColor: "text-purple-600",
+  },
+  {
+    id: "eng102",
+    name: "ENG102: Academic Writing",
+    module: "Module 1: Introduction",
+    progress: 45,
+    color: "bg-emerald-100",
+    iconColor: "text-emerald-600",
+  },
+];
+
+const DEADLINES = [
+  {
+    id: 1,
+    course: "CS101 Midterm Project",
+    date: "Tomorrow, 11:59 PM",
+    type: "alert",
+    icon: AlertCircle,
+  },
+  {
+    id: 2,
+    course: "MATH201 Quiz 2",
+    date: "Friday, 10:00 AM",
+    type: "warning",
+    icon: Clock,
+  },
+  {
+    id: 3,
+    course: "ENG102 Essay Submission",
+    date: "Saturday, 5:00 PM",
+    type: "warning",
+    icon: Clock,
+  },
+];
 
 export function StudentDashboard() {
   const { user } = useAuth();
 
+  // Quiz Modal State
+  const [activeQuiz, setActiveQuiz] = useState(null); // { course, module, title }
+  const [timeLeft, setTimeLeft] = useState(30 * 60); // 30 minutes in seconds
+
+  useEffect(() => {
+    let timer;
+    if (activeQuiz && timeLeft > 0) {
+      timer = setInterval(() => {
+        setTimeLeft((prev) => prev - 1);
+      }, 1000);
+    }
+    return () => clearInterval(timer);
+  }, [activeQuiz, timeLeft]);
+
+  const handleTakeQuiz = (courseName, moduleName) => {
+    setActiveQuiz({
+      course: courseName,
+      module: moduleName,
+      title: "Midterm Quiz Evaluation",
+    });
+    setTimeLeft(30 * 60); // Reset timer
+  };
+
+  const formatTime = (seconds) => {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m}:${s.toString().padStart(2, "0")}`;
+  };
+
+  const closeQuiz = () => {
+    setActiveQuiz(null);
+  };
+
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+      {/* Quiz Modal */}
+      <Dialog open={!!activeQuiz} onOpenChange={(open) => !open && closeQuiz()}>
+        <DialogContent className="sm:max-w-2xl gap-0 p-0 overflow-hidden">
+          {activeQuiz && (
+            <>
+              <div className="bg-primary/5 p-6 border-b border-primary/10">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-xs font-semibold uppercase tracking-wider text-primary bg-primary/10 px-2 py-0.5 rounded-full">
+                        {activeQuiz.course}
+                      </span>
+                    </div>
+                    <DialogTitle className="text-2xl font-display text-slate-900">
+                      {activeQuiz.title}
+                    </DialogTitle>
+                    <DialogDescription className="text-slate-500 mt-1">
+                      {activeQuiz.module}
+                    </DialogDescription>
+                  </div>
+                  <div className="flex flex-col items-end">
+                    <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-xl shadow-sm border border-slate-100">
+                      <Timer
+                        className={`w-5 h-5 ${timeLeft < 300 ? "text-red-500 animate-pulse" : "text-slate-400"}`}
+                      />
+                      <span
+                        className={`font-mono text-xl font-bold tracking-tight ${timeLeft < 300 ? "text-red-500" : "text-slate-700"}`}
+                      >
+                        {formatTime(timeLeft)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-6 space-y-6 bg-slate-50/50">
+                <div className="space-y-4">
+                  <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
+                    <p className="font-medium text-slate-900 mb-4">
+                      Question 1: Explain the core concepts of this module
+                      inside a real-world scenario.
+                    </p>
+                    <div className="space-y-2">
+                      {[
+                        "Option A: Utilizing the framework natively",
+                        "Option B: Deploying standalone instances",
+                        "Option C: Implementing proxy patterns",
+                        "Option D: Both A and C",
+                      ].map((opt, i) => (
+                        <label
+                          key={i}
+                          className="flex items-center gap-3 p-3 rounded-xl border border-slate-100 hover:border-primary hover:bg-primary/5 cursor-pointer transition-colors"
+                        >
+                          <input
+                            type="radio"
+                            name="q1"
+                            className="text-primary focus:ring-primary w-4 h-4"
+                          />
+                          <span className="text-sm text-slate-700">{opt}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
+                    <p className="font-medium text-slate-900 mb-4">
+                      Question 2: Which of the following best describes the
+                      expected behavior?
+                    </p>
+                    <textarea
+                      className="w-full h-32 p-3 text-sm border-slate-200 rounded-xl focus:border-primary focus:ring-primary resize-none"
+                      placeholder="Write your reasoning here..."
+                    ></textarea>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-4 border-t border-slate-100 bg-white flex justify-between items-center">
+                <Button
+                  variant="ghost"
+                  onClick={closeQuiz}
+                  className="text-slate-500 hover:text-slate-700"
+                >
+                  <LogOut className="w-4 h-4 mr-2" /> Save & Exit
+                </Button>
+                <div className="space-x-3">
+                  <Button variant="outline">Previous</Button>
+                  <Button className="bg-primary hover:bg-primary/90 text-white">
+                    Next Question
+                  </Button>
+                </div>
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+
       <div className="glass-panel p-8 rounded-[2rem] relative overflow-hidden">
         {/* Decorative background elements */}
         <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3"></div>
@@ -126,49 +321,54 @@ export function StudentDashboard() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-8">
-            <div className="group relative">
-              <div className="absolute -inset-2 rounded-2xl bg-slate-50 opacity-0 transition-opacity group-hover:opacity-100" />
-              <div className="relative flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-100 text-blue-600">
-                    <BookOpen className="h-6 w-6" />
+            {COURSE_PROGRESS.map((course, index) => (
+              <div key={course.id} className="group relative block">
+                <div className="absolute -inset-4 rounded-2xl bg-slate-50 opacity-0 transition-opacity group-hover:opacity-100" />
+                <div className="relative flex flex-col gap-4">
+                  <Link
+                    to={`/courses/${course.id}`}
+                    className="flex items-center justify-between"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div
+                        className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ${course.color} ${course.iconColor}`}
+                      >
+                        {index % 2 === 0 ? (
+                          <BookOpen className="h-6 w-6" />
+                        ) : (
+                          <Activity className="h-6 w-6" />
+                        )}
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-base font-medium leading-none text-slate-900 group-hover:text-primary transition-colors">
+                          {course.name}
+                        </p>
+                        <p className="text-sm text-slate-500">
+                          {course.module}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="font-display text-lg font-semibold text-slate-900">
+                      {course.progress}%
+                    </div>
+                  </Link>
+                  <Progress
+                    value={course.progress}
+                    className="h-2 bg-slate-100 w-full"
+                  />
+                  <div className="flex justify-end pt-2">
+                    <Button
+                      size="sm"
+                      onClick={() => handleTakeQuiz(course.name, course.module)}
+                      className="bg-primary/10 text-primary hover:bg-primary/20 shadow-none border-none transition-colors"
+                    >
+                      <PlayCircle className="w-4 h-4 mr-2" />
+                      Continue Learning
+                    </Button>
                   </div>
-                  <div className="space-y-1">
-                    <p className="text-base font-medium leading-none text-slate-900">
-                      CS101: Introduction to Computer Science
-                    </p>
-                    <p className="text-sm text-slate-500">
-                      Module 3: Data Structures
-                    </p>
-                  </div>
-                </div>
-                <div className="font-display text-lg font-semibold text-slate-900">
-                  65%
                 </div>
               </div>
-              <Progress value={65} className="mt-4 h-2 bg-slate-100" />
-            </div>
-
-            <div className="group relative">
-              <div className="absolute -inset-2 rounded-2xl bg-slate-50 opacity-0 transition-opacity group-hover:opacity-100" />
-              <div className="relative flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-purple-100 text-purple-600">
-                    <Activity className="h-6 w-6" />
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-base font-medium leading-none text-slate-900">
-                      MATH201: Linear Algebra
-                    </p>
-                    <p className="text-sm text-slate-500">Module 2: Matrices</p>
-                  </div>
-                </div>
-                <div className="font-display text-lg font-semibold text-slate-900">
-                  30%
-                </div>
-              </div>
-              <Progress value={30} className="mt-4 h-2 bg-slate-100" />
-            </div>
+            ))}
           </CardContent>
         </Card>
 
@@ -183,32 +383,50 @@ export function StudentDashboard() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              <div className="group flex items-start gap-4 rounded-2xl border border-slate-100 bg-white/50 p-4 transition-colors hover:bg-white">
-                <div className="rounded-xl bg-red-50 p-2">
-                  <AlertCircle className="h-5 w-5 text-red-500" />
-                </div>
-                <div className="space-y-1">
-                  <p className="text-sm font-medium leading-none text-slate-900">
-                    CS101 Midterm Project
-                  </p>
-                  <p className="text-sm text-red-500 font-medium flex items-center gap-1">
-                    <Calendar className="h-3 w-3" /> Tomorrow, 11:59 PM
-                  </p>
-                </div>
-              </div>
-              <div className="group flex items-start gap-4 rounded-2xl border border-slate-100 bg-white/50 p-4 transition-colors hover:bg-white">
-                <div className="rounded-xl bg-amber-50 p-2">
-                  <Clock className="h-5 w-5 text-amber-500" />
-                </div>
-                <div className="space-y-1">
-                  <p className="text-sm font-medium leading-none text-slate-900">
-                    MATH201 Quiz 2
-                  </p>
-                  <p className="text-sm text-amber-600 font-medium flex items-center gap-1">
-                    <Calendar className="h-3 w-3" /> Friday, 10:00 AM
-                  </p>
-                </div>
-              </div>
+              {DEADLINES.map((deadline) => {
+                const IconComponent = deadline.icon;
+                const isAlert = deadline.type === "alert";
+                const bgColor = isAlert ? "bg-red-50" : "bg-amber-50";
+                const textColor = isAlert ? "text-red-500" : "text-amber-500";
+                const dateColor = isAlert ? "text-red-500" : "text-amber-600";
+
+                return (
+                  <div
+                    key={deadline.id}
+                    className={`group flex items-start gap-4 rounded-2xl border ${
+                      isAlert ? "border-red-100" : "border-amber-100"
+                    } ${bgColor} p-4 transition-colors hover:bg-white`}
+                  >
+                    <div className={`rounded-xl ${bgColor} p-2 shrink-0`}>
+                      <IconComponent className={`h-5 w-5 ${textColor}`} />
+                    </div>
+                    <div className="space-y-1 flex-1 min-w-0">
+                      <p className="text-sm font-medium leading-none text-slate-900 truncate">
+                        {deadline.course}
+                      </p>
+                      <p
+                        className={`text-sm font-medium flex items-center gap-1 ${dateColor}`}
+                      >
+                        <Calendar className="h-3 w-3 shrink-0" />{" "}
+                        <span className="truncate">{deadline.date}</span>
+                      </p>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() =>
+                        handleTakeQuiz(
+                          deadline.course.split(" ")[0],
+                          deadline.course,
+                        )
+                      }
+                      className="rounded-lg shrink-0 text-primary hover:bg-primary/10"
+                    >
+                      Take
+                    </Button>
+                  </div>
+                );
+              })}
             </div>
           </CardContent>
         </Card>

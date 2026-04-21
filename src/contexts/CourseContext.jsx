@@ -11,15 +11,18 @@ export function CourseProvider({ children }) {
       category: "Programming",
       difficulty: "Beginner",
       status: "Draft",
-      thumbnail: "https://images.unsplash.com/photo-1633356122544-f134324a6cee?q=80&w=3270&auto=format&fit=crop",
+      thumbnail:
+        "https://images.unsplash.com/photo-1633356122544-f134324a6cee?q=80&w=3270&auto=format&fit=crop",
       teacherId: "1",
       modules: [
         {
           id: "m1",
           title: "Getting Started",
-          materials: [{ id: "mat1", title: "React Basics PDF", type: "document" }]
-        }
-      ]
+          materials: [
+            { id: "mat1", title: "React Basics PDF", type: "document" },
+          ],
+        },
+      ],
     },
     {
       id: "c2",
@@ -28,26 +31,38 @@ export function CourseProvider({ children }) {
       category: "Computer Science",
       difficulty: "Advanced",
       status: "Pending Review",
-      thumbnail: "https://images.unsplash.com/photo-1518770660439-4636190af475?q=80&w=3270&auto=format&fit=crop",
+      thumbnail:
+        "https://images.unsplash.com/photo-1518770660439-4636190af475?q=80&w=3270&auto=format&fit=crop",
       teacherId: "1",
-      modules: []
-    }
+      modules: [],
+    },
   ]);
 
   const addCourse = (course) => {
-    setCourses([...courses, { ...course, id: Date.now().toString(), status: "Draft" }]);
+    setCourses([
+      ...courses,
+      { ...course, id: Date.now().toString(), status: "Draft" },
+    ]);
   };
 
   const updateCourse = (id, updatedData) => {
-    setCourses(courses.map(c => c.id === id ? { ...c, ...updatedData } : c));
+    setCourses(
+      courses.map((c) => (c.id === id ? { ...c, ...updatedData } : c)),
+    );
   };
 
   const updateCourseStatus = (id, newStatus, feedback = "") => {
-    setCourses(courses.map(c => c.id === id ? { ...c, status: newStatus, feedback } : c));
+    setCourses(
+      courses.map((c) =>
+        c.id === id ? { ...c, status: newStatus, feedback } : c,
+      ),
+    );
   };
 
   return (
-    <CourseContext.Provider value={{ courses, addCourse, updateCourse, updateCourseStatus }}>
+    <CourseContext.Provider
+      value={{ courses, addCourse, updateCourse, updateCourseStatus }}
+    >
       {children}
     </CourseContext.Provider>
   );
