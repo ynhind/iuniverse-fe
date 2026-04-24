@@ -14,57 +14,54 @@ import { Search, BookOpen, Clock, Users, GraduationCap } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Badge } from "@/components/ui/Badge";
 
-const MOCK_COURSES = [
-  {
-    id: "cs101",
-    title: "Introduction to Computer Science",
-    code: "CS101",
-    instructor: "Dr. Smith",
-    students: 120,
-    duration: "12 weeks",
-    status: "Active",
-    color: "bg-blue-500",
-  },
-  {
-    id: "math201",
-    title: "Linear Algebra",
-    code: "MATH201",
-    instructor: "Prof. Johnson",
-    students: 85,
-    duration: "10 weeks",
-    status: "Active",
-    color: "bg-indigo-500",
-  },
-  {
-    id: "eng102",
-    title: "Academic Writing",
-    code: "ENG102",
-    instructor: "Dr. Williams",
-    students: 200,
-    duration: "8 weeks",
-    status: "Upcoming",
-    color: "bg-emerald-500",
-  },
-  {
-    id: "phy101",
-    title: "Physics I: Mechanics",
-    code: "PHY101",
-    instructor: "Dr. Brown",
-    students: 150,
-    duration: "14 weeks",
-    status: "Active",
-    color: "bg-amber-500",
-  },
-];
+import { studentApi } from "@/api/student.api";
 
 export function StudentCourses() {
   const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState("");
+  const [courses, setCourses] = useState([]);
+  const [joinCode, setJoinCode] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
 
-  const filteredCourses = MOCK_COURSES.filter(
+  React.useEffect(() => {
+    fetchCourses();
+  }, []);
+
+  const fetchCourses = async () => {
+    try {
+      setIsLoading(true);
+      const res = await studentApi.getMyCourses();
+      // Assuming response contains data array
+      setCourses(res?.data || res || []);
+    } catch (error) {
+      alert("Failed to fetch courses");
+      console.error(error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleEnroll = async () => {
+    if (!joinCode) {
+      alert("Please enter a join code");
+      return;
+    }
+    try {
+      await studentApi.enrollCourse(joinCode);
+      alert("Enrolled successfully!");
+      setJoinCode("");
+      fetchCourses();
+    } catch (error) {
+      alert("Failed to enroll course");
+      console.error(error);
+    }
+  };
+
+  const filteredCourses = courses.filter(
     (course) =>
-      course.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      course.code.toLowerCase().includes(searchTerm.toLowerCase()),
+      course.courseName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      course.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      course.joinCode?.toLowerCase().includes(searchTerm.toLowerCase()),
   );
 
   return (
@@ -79,46 +76,59 @@ export function StudentCourses() {
           </p>
         </div>
 
-        <div className="relative w-full sm:w-72">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-          <Input
-            type="search"
-            placeholder="Search courses..."
-            className="pl-9 bg-white/50 border-slate-200/60 shadow-sm rounded-2xl focus-visible:ring-primary/20"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
+        <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
+          <div className="relative w-full sm:w-64">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <Input
+              type="search"
+              placeholder="Search courses..."
+              className="pl-9 bg-white/50 border-slate-200/60 shadow-sm rounded-2xl focus-visible:ring-primary/20"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+          <div className="flex gap-2 w-full sm:w-auto">
+            <Input
+              placeholder="Join Code"
+              className="w-full sm:w-32 bg-white/50 border-slate-200/60 shadow-sm rounded-2xl focus-visible:ring-primary/20"
+              value={joinCode}
+              onChange={(e) => setJoinCode(e.target.value)}
+            />
+            <Button onClick={handleEnroll} className="rounded-2xl shadow-md shadow-primary/20 shrink-0">
+              Enroll
+            </Button>
+          </div>
         </div>
       </div>
 
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        {filteredCourses.map((course) => (
+        {isLoading ? (
+          <div className="col-span-full text-center text-slate-500 py-10">Loading courses...</div>
+        ) : filteredCourses.length === 0 ? (
+          <div className="col-span-full text-center text-slate-500 py-10">No courses found.</div>
+        ) : filteredCourses.map((course) => (
           <Card
-            key={course.id}
+            key={course.id || course.courseID}
             className="group glass border-none shadow-lg shadow-slate-200/50 hover:-translate-y-1 transition-all duration-300 overflow-hidden flex flex-col"
           >
-            <div className={`h-2 w-full ${course.color}`} />
+            <div className={`h-2 w-full bg-blue-500`} />
             <CardHeader className="pb-4">
               <div className="flex items-center justify-between mb-2">
                 <Badge
-                  className={`rounded-full px-2 py-1 text-xs font-medium border-none ${
-                    course.status === "Active"
-                      ? "bg-primary text-white"
-                      : "bg-gray-200 text-yellow-400"
-                  }`}
+                  className={`rounded-full px-2 py-1 text-xs font-medium border-none bg-primary text-white`}
                 >
-                  {course.status}
+                  Active
                 </Badge>
                 <span className="text-xs font-bold tracking-wider text-slate-400 uppercase">
-                  {course.code}
+                  {course.joinCode || course.code}
                 </span>
               </div>
               <CardTitle className="font-display text-xl leading-tight text-slate-900 group-hover:text-primary transition-colors line-clamp-2">
-                {course.title}
+                {course.courseName || course.title}
               </CardTitle>
               <CardDescription className="flex items-center gap-1.5 mt-2 text-sm text-slate-500">
                 <GraduationCap className="h-4 w-4" />
-                {course.instructor}
+                {course.instructor || "Instructor"}
               </CardDescription>
             </CardHeader>
             <CardContent className="flex-1 pb-4">
@@ -126,26 +136,25 @@ export function StudentCourses() {
                 <div className="flex items-center gap-1.5">
                   <Users className="h-4 w-4 text-slate-400" />
                   <span className="font-medium text-slate-700">
-                    {course.students}
+                    {course.students || 0}
                   </span>
                 </div>
                 <div className="w-px h-4 bg-slate-200" />
                 <div className="flex items-center gap-1.5">
                   <Clock className="h-4 w-4 text-slate-400" />
                   <span className="font-medium text-slate-700">
-                    {course.duration}
+                    {course.duration || "12 weeks"}
                   </span>
                 </div>
               </div>
             </CardContent>
             <CardFooter className="pt-0 pb-6 px-6">
-              <Button
-                asChild
-                variant="default"
-                className="w-full rounded-xl shadow-md shadow-primary/20"
+              <Link
+                to={`/courses/${course.id || course.courseID}`}
+                className="w-full inline-flex items-center justify-center rounded-xl shadow-md shadow-primary/20 bg-primary text-white font-medium h-10 px-4 py-2 text-sm hover:bg-primary/90 transition-colors"
               >
-                <Link to={`/courses/${course.id}`}>Go to Course</Link>
-              </Button>
+                Go to Course
+              </Link>
             </CardFooter>
           </Card>
         ))}

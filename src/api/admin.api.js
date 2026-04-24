@@ -1,3 +1,5 @@
+import axiosInstance from './configAxios';
+
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 // Mock Data Initializer
@@ -105,5 +107,26 @@ export const adminApi = {
     announcements = announcements.filter(a => a.id !== id);
     localStorage.setItem("mockAnnouncements", JSON.stringify(announcements));
     return { success: true };
+  },
+
+  // Real API Endpoints
+  addUser: async (data) => {
+    const response = await axiosInstance.post('/admin/add', data);
+    return response.data;
+  },
+
+  getAllUsers: async (page = 0, size = 10, sortBy = "firstName:desc") => {
+    const response = await axiosInstance.get(`/admin/users?page=${page}&size=${size}&sortBy=${sortBy}`);
+    return response.data;
+  },
+
+  changeUserStatus: async (userId, status) => {
+    const response = await axiosInstance.patch(`/admin/users/${userId}/status?status=${status}`);
+    return response.data;
+  },
+
+  deleteCourse: async (courseId) => {
+    const response = await axiosInstance.delete(`/admin/courses/${courseId}`);
+    return response.data;
   },
 };

@@ -34,6 +34,9 @@ export function CourseProvider({ children }) {
     }
   ]);
 
+  // Custom breadcrumb label for dynamic pages (e.g. course name instead of ID)
+  const [pageTitle, setPageTitle] = useState(null);
+
   const addCourse = (course) => {
     setCourses([...courses, { ...course, id: Date.now().toString(), status: "Draft" }]);
   };
@@ -47,7 +50,7 @@ export function CourseProvider({ children }) {
   };
 
   return (
-    <CourseContext.Provider value={{ courses, addCourse, updateCourse, updateCourseStatus }}>
+    <CourseContext.Provider value={{ courses, addCourse, updateCourse, updateCourseStatus, pageTitle, setPageTitle }}>
       {children}
     </CourseContext.Provider>
   );
