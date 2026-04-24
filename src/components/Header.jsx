@@ -20,11 +20,13 @@ import {
   PopoverTrigger,
 } from "@/components/ui/Popover";
 import { useLocation, Link } from "react-router-dom";
+import { useCourses } from "@/contexts/CourseContext";
 
 export function Header() {
   const { user, switchRole, logout } = useAuth();
   const logoutMutation = useLogoutMutation();
   const location = useLocation();
+  const { pageTitle } = useCourses();
 
   const handleLogout = () => {
     logoutMutation.mutate(undefined, {
@@ -44,19 +46,24 @@ export function Header() {
         {pathnames.map((value, index) => {
           const to = `/${pathnames.slice(0, index + 1).join("/")}`;
           const isLast = index === pathnames.length - 1;
+          // If last segment is a number (e.g. course ID) and we have a real name, use it
+          const isNumeric = /^\d+$/.test(value);
+          const label = isLast && isNumeric && pageTitle
+            ? pageTitle
+            : value.replace(/-/g, " ");
           return (
             <React.Fragment key={to}>
               <ChevronRight className="h-4 w-4 opacity-50" />
               {isLast ? (
                 <span className="font-medium text-foreground capitalize">
-                  {value.replace("-", " ")}
+                  {label}
                 </span>
               ) : (
                 <Link
                   to={to}
                   className="hover:text-foreground transition-colors capitalize"
                 >
-                  {value.replace("-", " ")}
+                  {label}
                 </Link>
               )}
             </React.Fragment>
