@@ -3,48 +3,6 @@ import { CheckCircle, XCircle, Search, FileText, BookOpen, User, Clock, AlertCir
 import { useToast } from "@/contexts/ToastContext";
 import { usePendingCoursesQuery, useApproveCourseMutation, useRejectCourseMutation } from "@/hooks/useAdmin";
 
-const ADMIN_USER = "admin";
-const ADMIN_PASS = "admin@123";
-
-function useAdminAuth() {
-  const [authed, setAuthed]     = useState(() => sessionStorage.getItem("adminAuthed") === "1");
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError]       = useState("");
-  const login = (e) => {
-    e.preventDefault();
-    if (username === ADMIN_USER && password === ADMIN_PASS) {
-      sessionStorage.setItem("adminAuthed", "1");
-      setAuthed(true);
-    } else {
-      setError("Invalid credentials.");
-    }
-  };
-  return { authed, username, setUsername, password, setPassword, error, login };
-}
-
-function LoginGate({ auth }) {
-  return (
-    <div className="min-h-[60vh] flex items-center justify-center">
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-xl p-8 w-full max-w-sm">
-        <h2 className="text-xl font-bold text-slate-800 mb-1">Admin Login</h2>
-        <p className="text-sm text-slate-500 mb-6">Course Review Queue access</p>
-        <form onSubmit={auth.login} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Username</label>
-            <input className="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" value={auth.username} onChange={(e) => auth.setUsername(e.target.value)} placeholder="admin" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Password</label>
-            <input type="password" className="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" value={auth.password} onChange={(e) => auth.setPassword(e.target.value)} placeholder="••••••••" />
-          </div>
-          {auth.error && <p className="text-sm text-red-500">{auth.error}</p>}
-          <button type="submit" className="w-full py-2.5 rounded-xl bg-primary text-white text-sm font-medium hover:bg-primary/90">Sign in</button>
-        </form>
-      </div>
-    </div>
-  );
-}
 
 function RejectModal({ course, onClose, onConfirm, isPending }) {
   const [feedback, setFeedback] = useState("");
@@ -119,7 +77,6 @@ function CourseCard({ course, onApprove, onReject, isApproving }) {
 }
 
 export function ReviewQueue() {
-  const auth  = useAdminAuth();
   const { toast } = useToast();
   const [search, setSearch]           = useState("");
   const [rejectTarget, setRejectTarget] = useState(null);
@@ -132,8 +89,6 @@ export function ReviewQueue() {
     const list = Array.isArray(data) ? data : Array.isArray(data?.data) ? data.data : Array.isArray(data?.content) ? data.content : [];
     return list.filter((c) => (c?.courseName || c?.title || "").toLowerCase().includes(search.toLowerCase()));
   }, [data, search]);
-
-  if (!auth.authed) return <LoginGate auth={auth} />;
 
   const handleApprove = async (courseId) => {
     try {
