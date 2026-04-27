@@ -50,11 +50,12 @@ const AUDIENCE_OPTIONS = [
   { value: "ALL",     label: "All Users",      icon: <Globe          className="w-4 h-4" /> },
   { value: "TEACHER", label: "Teachers Only",  icon: <BookOpen       className="w-4 h-4" /> },
   { value: "STUDENT", label: "Students Only",  icon: <GraduationCap  className="w-4 h-4" /> },
+  { value: "SPECIFIC_EMAILS", label: "Specific Emails", icon: <User className="w-4 h-4" /> },
 ];
 
 function AudienceBadge({ audience }) {
-  const map = { ALL: "bg-primary/10 text-primary", TEACHER: "bg-emerald-50 text-emerald-700", STUDENT: "bg-blue-50 text-blue-700" };
-  const labels = { ALL: "All Users", TEACHER: "Teachers", STUDENT: "Students" };
+  const map = { ALL: "bg-primary/10 text-primary", TEACHER: "bg-emerald-50 text-emerald-700", STUDENT: "bg-blue-50 text-blue-700", SPECIFIC_EMAILS: "bg-purple-50 text-purple-700" };
+  const labels = { ALL: "All Users", TEACHER: "Teachers", STUDENT: "Students", SPECIFIC_EMAILS: "Specific Emails" };
   return (
     <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${map[audience] || "bg-slate-100 text-slate-600"}`}>
       {labels[audience] || audience}
@@ -83,6 +84,13 @@ function AnnouncementCard({ announcement, onPublish, onDelete, isPublishing, isD
       </div>
 
       <p className="text-sm text-slate-600 line-clamp-3 mb-4">{announcement.content}</p>
+
+      {announcement.audience === "SPECIFIC_EMAILS" && announcement.targetEmails && (
+        <div className="bg-slate-50 p-3 rounded-lg border border-slate-100 mb-4">
+          <span className="text-xs font-medium text-slate-500 block mb-1">Target Emails:</span>
+          <p className="text-xs text-slate-700 truncate">{announcement.targetEmails}</p>
+        </div>
+      )}
 
       {date && (
         <div className="flex items-center gap-1 text-xs text-slate-400 mb-4">
@@ -121,6 +129,7 @@ export function Announcements() {
   const [title,    setTitle]    = useState("");
   const [content,  setContent]  = useState("");
   const [audience, setAudience] = useState("ALL");
+  const [targetEmails, setTargetEmails] = useState("");
 
   const { data, isLoading }    = useAnnouncementsQuery();
   const createMutation         = useCreateAnnouncementMutation();
@@ -140,10 +149,20 @@ export function Announcements() {
       toast({ title: "Missing fields", description: "Title and content are required.", variant: "error" });
       return;
     }
+    if (audience === "SPECIFIC_EMAILS" && !targetEmails.trim()) {
+      toast({ title: "Missing fields", description: "Target emails are required.", variant: "error" });
+      return;
+    }
     try {
-      await createMutation.mutateAsync({ title: title.trim(), content: content.trim(), audience, status: "DRAFT" });
+      await createMutation.mutateAsync({ 
+        title: title.trim(), 
+        content: content.trim(), 
+        audience, 
+        status: "DRAFT",
+        ...(audience === "SPECIFIC_EMAILS" ? { targetEmails: targetEmails.trim() } : {})
+      });
       toast({ title: "Created", description: "Announcement saved as draft.", variant: "success" });
-      setTitle(""); setContent(""); setAudience("ALL");
+      setTitle(""); setContent(""); setAudience("ALL"); setTargetEmails("");
     } catch (err) {
       toast({ title: "Error", description: err?.response?.data?.message || "Failed to create.", variant: "error" });
     }
@@ -207,6 +226,19 @@ export function Announcements() {
                   ))}
                 </div>
               </div>
+
+              {audience === "SPECIFIC_EMAILS" && (
+                <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Target Emails</label>
+                  <input 
+                    className="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" 
+                    value={targetEmails} 
+                    onChange={(e) => setTargetEmails(e.target.value)} 
+                    placeholder="student1@example.com, teacher2@example.com" 
+                  />
+                  <p className="text-xs text-slate-500 mt-1">Separate multiple emails with commas.</p>
+                </div>
+              )}
 
               <button
                 type="submit"
