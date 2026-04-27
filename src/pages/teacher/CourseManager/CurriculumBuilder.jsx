@@ -52,7 +52,11 @@ export function CurriculumBuilder({ modules, setModules, openModal, courseId }) 
         const realId = res?.id || res?.moduleId || newModule.id;
         setModules((prev) => prev.map((m) => m.id === newModule.id ? { ...m, id: realId } : m));
       },
-      onError: () => toast({ title: "Error", description: "Failed to create module.", variant: "error" }),
+      onError: (error) => {
+        toast({ title: "Error", description: "Failed to create module. " + (error?.response?.data?.message || ""), variant: "error" });
+        // Revert optimistic update
+        setModules((prev) => prev.filter((m) => m.id !== newModule.id));
+      },
     });
   };
 

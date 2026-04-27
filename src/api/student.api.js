@@ -21,6 +21,11 @@ export const studentApi = {
     return response.data;
   },
 
+  getMySubmissions: async () => {
+    const response = await axiosInstance.get('/student/my-submissions');
+    return response.data;
+  },
+
   submitRating: async (courseId, data) => {
     const response = await axiosInstance.post(`/student/courses/${courseId}/ratings`, data);
     return response.data;

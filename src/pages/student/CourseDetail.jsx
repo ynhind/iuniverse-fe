@@ -3,6 +3,7 @@ import ReactDOM from "react-dom";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCourses } from "@/contexts/CourseContext";
+import { useToast } from "@/contexts/ToastContext";
 import { studentApi } from "@/api/student.api";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/Tabs";
 import {
@@ -282,7 +283,8 @@ function QuizModal({ problemSet, onClose, onComplete }) {
 }
 
 // ─── Rating Modal ─────────────────────────────────────────────────────────────
-function RatingModal({ courseId, onClose }) {
+function RatingModal({ courseId, onClose, onSuccess }) {
+  const { toast } = useToast();
   const [starCount, setStarCount] = useState(5);
   const [hovered, setHovered] = useState(0);
   const [comment, setComment] = useState("");
@@ -292,19 +294,20 @@ function RatingModal({ courseId, onClose }) {
     try {
       setIsSubmitting(true);
       await studentApi.submitRating(courseId, { starCount, comment });
-      alert("Rating submitted successfully! Thank you for your feedback.");
-      onClose();
+      toast({ title: "Success", description: "Rating submitted successfully! Thank you for your feedback.", variant: "success" });
+      if (onSuccess) onSuccess(starCount);
+      else onClose();
     } catch (err) {
       console.error(err);
       const status = err?.response?.status;
       const msg = err?.response?.data?.message;
 
       if (status === 409) {
-        alert("You have already rated this course!");
+        toast({ title: "Info", description: "You have already rated this course!", variant: "warning" });
       } else if (msg) {
-        alert(`Error: ${msg}`);
+        toast({ title: "Error", description: msg, variant: "error" });
       } else {
-        alert("Rating failed. Please try again.");
+        toast({ title: "Error", description: "Rating failed. Please try again.", variant: "error" });
       }
     } finally {
       setIsSubmitting(false);
@@ -362,8 +365,11 @@ function ModuleContentRenderer({ moduleId }) {
   // psId → score (null = submitted but no score yet)
   const [completedQuizzes, setCompletedQuizzes] = useState({});
 
+  // Flag to know if submissions are loaded
+  const [submissionsLoaded, setSubmissionsLoaded] = useState(false);
+
   const handleQuizComplete = (psId, score) => {
-    setCompletedQuizzes((prev) => ({ ...prev, [psId]: score }));
+    setCompletedQuizzes((prev) => ({ ...prev, [psId]: score || null }));
   };
 
   useEffect(() => {
@@ -373,23 +379,35 @@ function ModuleContentRenderer({ moduleId }) {
   const fetchContents = async () => {
     try {
       setIsLoading(true);
-      // Backend: { status, message, data: { materials: [...], problemSets: [...] } }
-      const res = await studentApi.getModuleContents(moduleId);
-      console.log("[ModuleContent] raw response:", res);
+      
+      // Fetch module contents and user's past submissions simultaneously
+      const [res, subRes] = await Promise.allSettled([
+        studentApi.getModuleContents(moduleId),
+        studentApi.getMySubmissions()
+      ]);
 
-      // axios trả về response.data → res = { status, message, data: {...} }
-      const inner = res?.data ?? res;
-      const safeArr = (v) => (Array.isArray(v) ? v : []);
+      if (subRes.status === "fulfilled") {
+        const submittedIds = subRes.value?.data || subRes.value || [];
+        // Map list of IDs to an object { [id]: null }
+        const initialCompleted = {};
+        submittedIds.forEach(id => { initialCompleted[id] = null; });
+        setCompletedQuizzes(initialCompleted);
+        setSubmissionsLoaded(true);
+      }
 
-      setContents({
-        materials: safeArr(inner?.materials),
-        problemSets: safeArr(inner?.problemSets),
-      });
-    } catch (err) {
-      console.error("[ModuleContent] error:", err);
-      if (err?.response?.status === 403) {
+      if (res.status === "fulfilled") {
+        const inner = res.value?.data ?? res.value;
+        const safeArr = (v) => (Array.isArray(v) ? v : []);
+
+        setContents({
+          materials: safeArr(inner?.materials),
+          problemSets: safeArr(inner?.problemSets),
+        });
+      } else if (res.reason?.response?.status === 403) {
         setContents({ materials: [], problemSets: [], forbidden: true });
       }
+    } catch (err) {
+      console.error("[ModuleContent] error:", err);
     } finally {
       setIsLoading(false);
     }
@@ -741,7 +759,14 @@ export function StudentCourseDetail() {
 
       {/* Rating Modal */}
       {showRating && (
-        <RatingModal courseId={id} onClose={() => setShowRating(false)} />
+        <RatingModal 
+          courseId={id} 
+          onClose={() => setShowRating(false)} 
+          onSuccess={(newStar) => {
+            setMyRating(newStar);
+            setShowRating(false);
+          }}
+        />
       )}
     </div>
   );

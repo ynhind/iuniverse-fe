@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/contexts/ToastContext";
 import {
   Card,
   CardContent,
@@ -18,6 +19,7 @@ import { studentApi } from "@/api/student.api";
 
 export function StudentCourses() {
   const { user } = useAuth();
+  const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
   const [courses, setCourses] = useState([]);
   const [joinCode, setJoinCode] = useState("");
@@ -34,7 +36,7 @@ export function StudentCourses() {
       // Assuming response contains data array
       setCourses(res?.data || res || []);
     } catch (error) {
-      alert("Failed to fetch courses");
+      toast({ title: "Error", description: "Failed to fetch courses", variant: "error" });
       console.error(error);
     } finally {
       setIsLoading(false);
@@ -43,16 +45,17 @@ export function StudentCourses() {
 
   const handleEnroll = async () => {
     if (!joinCode) {
-      alert("Please enter a join code");
+      toast({ title: "Validation Error", description: "Please enter a join code", variant: "error" });
       return;
     }
     try {
       await studentApi.enrollCourse(joinCode);
-      alert("Enrolled successfully!");
+      toast({ title: "Success", description: "Enrolled successfully!", variant: "success" });
       setJoinCode("");
       fetchCourses();
     } catch (error) {
-      alert("Failed to enroll course");
+      const msg = error?.response?.data?.message || "Failed to enroll course";
+      toast({ title: "Enrollment Failed", description: msg, variant: "error" });
       console.error(error);
     }
   };
