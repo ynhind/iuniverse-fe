@@ -41,7 +41,7 @@ export function Sidebar() {
     { name: "Review Queue", path: "/admin/review", icon: FileEdit },
     { name: "Announcements", path: "/admin/announcements", icon: BookOpen },
     { name: "User Management", path: "/users", icon: Users },
-    { name: "Analytics", path: "/analytics", icon: BarChart3 },
+    // { name: "Analytics", path: "/analytics", icon: BarChart3 },
   ];
 
   const teacherNav = [
