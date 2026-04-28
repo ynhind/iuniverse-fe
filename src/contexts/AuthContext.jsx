@@ -165,6 +165,16 @@ export function AuthProvider({ children }) {
     localStorage.removeItem("refreshToken");
   };
 
+  const switchRole = (newRole) => {
+    if (!user) return;
+    const normalized = normalizeRole(newRole);
+    // Convert STUDENT -> Student for display purposes if needed, but the normalizeRole returns uppercase
+    // We'll just use what normalizeRole returns
+    const updatedUser = { ...user, role: newRole === "Student" ? "Student" : newRole === "Lecturer" ? "Lecturer" : "Admin" };
+    setUser(updatedUser);
+    localStorage.setItem("user", JSON.stringify(updatedUser));
+  };
+
   const value = useMemo(
     () => ({
       user,
@@ -173,6 +183,7 @@ export function AuthProvider({ children }) {
       isAuthenticated: !!user && !!accessToken,
       login,
       logout,
+      switchRole,
     }),
     [user, accessToken, refreshToken]
   );

@@ -1,6 +1,20 @@
 import axiosInstance from './configAxios';
 
 export const studentApi = {
+  getNotifications: async (role) => {
+    // Mock API reading from same storage as admin
+    const announcements = JSON.parse(localStorage.getItem("mockAnnouncements")) || [];
+    const published = announcements.filter(a => {
+      if (a.status !== "PUBLISHED") return false;
+      if (role === "ADMIN" || role === "Admin") return true; // Admins see everything
+      if (a.audience === "ALL") return true;
+      if (role === "Student" || role === "STUDENT") return a.audience === "STUDENT";
+      if (role === "Lecturer" || role === "TEACHER") return a.audience === "TEACHER";
+      return false;
+    });
+    return { data: published };
+  },
+
   getMyCourses: async () => {
     const response = await axiosInstance.get('/student/my-courses');
     return response.data;

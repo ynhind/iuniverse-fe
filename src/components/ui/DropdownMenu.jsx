@@ -44,7 +44,7 @@ const DropdownMenuContent = ({
   return isOpen ? (
     <div
       className={cn(
-        "absolute top-full mt-2 min-w-[200px] rounded-2xl glass border border-white/40 shadow-xl p-1 z-50 bg-white",
+        "absolute top-full mt-2 min-w-[200px] rounded-2xl bg-white border border-slate-200/50 shadow-xl p-1.5 z-50 animate-in fade-in zoom-in-95 duration-200",
         align === "end" ? "right-0" : "left-0",
         className,
       )}
@@ -59,7 +59,7 @@ const DropdownMenuContent = ({
 const DropdownMenuLabel = ({ children, className, ...props }) => (
   <div
     className={cn(
-      "text-xs font-semibold text-slate-400 uppercase tracking-wider px-3 py-2 bg-white",
+      "text-xs font-semibold text-slate-500 uppercase tracking-wider px-3 py-2",
       className,
     )}
     {...props}
@@ -72,7 +72,7 @@ const DropdownMenuItem = ({ children, className, onClick, ...props }) => (
   <button
     onClick={onClick}
     className={cn(
-      "w-full text-left px-3 py-2 rounded-xl text-sm bg-white transition-colors hover:bg-slate-100 focus:bg-slate-100 focus:outline-none",
+      "w-full text-left px-3 py-2.5 rounded-xl text-sm font-medium transition-all hover:bg-slate-100 focus:bg-slate-100 focus:outline-none flex items-center gap-2",
       className,
     )}
     {...props}

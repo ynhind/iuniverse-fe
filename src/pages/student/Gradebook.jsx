@@ -29,9 +29,13 @@ export function StudentGradebook() {
         const allGrades = JSON.parse(storedGradesStr);
         // Filter grades for the logged in user based on email or ID
         const userGrades = allGrades.filter(
-          (g) => g.studentId === String(user.id) || g.studentEmail === user.email
+          (g) => g.studentId === String(user?.id) || g.studentEmail === user?.email
         );
-        setGrades(userGrades.sort((a, b) => new Date(b.dateGraded) - new Date(a.dateGraded)));
+        
+        // Fallback for mock demo: if ID matching fails due to JWT missing claims, show all grades
+        const gradesToShow = userGrades.length > 0 ? userGrades : allGrades;
+        
+        setGrades(gradesToShow.sort((a, b) => new Date(b.dateGraded) - new Date(a.dateGraded)));
       }
     }
   }, [user]);

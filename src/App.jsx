@@ -35,6 +35,7 @@ import { Login } from '@/pages/Login';
 import { Register } from '@/pages/Register';
 import { ForgotPassword } from '@/pages/ForgotPassword';
 import { ResetPassword } from '@/pages/ResetPassword';
+import { Profile } from '@/pages/Profile';
 
 const queryClient = new QueryClient();
 
@@ -109,6 +110,17 @@ function App() {
                           allowedRoles={['STUDENT', 'TEACHER', 'ADMIN']}
                         >
                           <StudentGradebook />
+                        </RoleRoute>
+                      }
+                    />
+
+                    <Route
+                      path="/profile"
+                      element={
+                        <RoleRoute
+                          allowedRoles={['STUDENT', 'TEACHER', 'ADMIN']}
+                        >
+                          <Profile />
                         </RoleRoute>
                       }
                     />

@@ -1,7 +1,9 @@
-import React from "react";
-import { Search, Bell, ChevronRight } from "lucide-react";
+import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { Search, Bell, ChevronRight, LogOut, User, GraduationCap, Shield, Settings, LifeBuoy } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLogoutMutation } from "@/hooks/useAuth";
+import { studentApi } from "@/api/student.api";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/Avatar";
@@ -25,8 +27,20 @@ import { useCourses } from "@/contexts/CourseContext";
 export function Header() {
   const { user, switchRole, logout } = useAuth();
   const logoutMutation = useLogoutMutation();
+  const navigate = useNavigate();
   const location = useLocation();
   const { pageTitle } = useCourses();
+  const [notifications, setNotifications] = useState([]);
+
+  const fetchNotifications = () => {
+    studentApi.getNotifications(user?.role)
+      .then(res => setNotifications(res.data || []))
+      .catch(console.error);
+  };
+
+  useEffect(() => {
+    fetchNotifications();
+  }, [user?.role]);
 
   const handleLogout = () => {
     logoutMutation.mutate(undefined, {
@@ -81,7 +95,7 @@ export function Header() {
           />
         </div>
 
-        <Popover>
+        <Popover onOpenChange={(open) => { if (open) fetchNotifications(); }}>
           <PopoverTrigger asChild>
             <Button
               variant="ghost"
@@ -92,30 +106,35 @@ export function Header() {
               <span className="absolute right-2.5 top-2.5 h-2 w-2 rounded-full bg-accent ring-2 ring-white"></span>
             </Button>
           </PopoverTrigger>
-          <PopoverContent align="end" className="w-80 rounded-2xl glass p-0">
-            <div className="flex items-center justify-between border-b border-white/20 p-4">
-              <h4 className="font-semibold">Notifications</h4>
-              <Badge variant="secondary" className="rounded-full">
-                3 New
-              </Badge>
+          <PopoverContent align="end" className="w-80 rounded-2xl glass p-0 border border-slate-200 shadow-xl">
+            <div className="flex items-center justify-between border-b border-white/40 p-4">
+              <h4 className="font-semibold text-slate-800">Notifications</h4>
+              {notifications.length > 0 && (
+                <Badge variant="secondary" className="rounded-full bg-primary/10 text-primary">
+                  {notifications.length} New
+                </Badge>
+              )}
             </div>
-            <div className="grid gap-1 p-2">
-              <div className="grid gap-1 rounded-xl p-3 hover:bg-black/5 transition-colors cursor-pointer">
-                <p className="text-sm font-medium leading-none">
-                  Assignment Graded
-                </p>
-                <p className="text-sm text-muted-foreground mt-1">
-                  CS101: Midterm Project has been graded.
-                </p>
-              </div>
-              <div className="grid gap-1 rounded-xl p-3 hover:bg-black/5 transition-colors cursor-pointer">
-                <p className="text-sm font-medium leading-none">
-                  New Announcement
-                </p>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Campus will be closed on Friday.
-                </p>
-              </div>
+            <div className="grid gap-1 p-2 max-h-80 overflow-y-auto">
+              {notifications.length > 0 ? (
+                notifications.map(notif => (
+                  <div key={notif.id} className="grid gap-1 rounded-xl p-3 hover:bg-slate-50 transition-colors cursor-pointer border border-transparent hover:border-slate-100">
+                    <p className="text-sm font-semibold text-slate-700 leading-tight">
+                      {notif.title}
+                    </p>
+                    <p className="text-xs text-slate-500 mt-1 line-clamp-2">
+                      {notif.content}
+                    </p>
+                    <p className="text-[10px] text-slate-400 mt-1">
+                      {new Date(notif.createdAt || Date.now()).toLocaleDateString()}
+                    </p>
+                  </div>
+                ))
+              ) : (
+                <div className="p-6 text-center text-sm text-slate-400">
+                  You have no new notifications.
+                </div>
+              )}
             </div>
           </PopoverContent>
         </Popover>
@@ -135,62 +154,67 @@ export function Header() {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent
-            className="w-64 rounded-2xl glass p-2"
+            className="w-72 rounded-3xl bg-white p-3 border border-slate-200 shadow-2xl ring-1 ring-slate-900/5"
             align="end"
             forceMount
           >
-            <DropdownMenuLabel className="font-normal p-3">
-              <div className="flex flex-col space-y-2">
-                <p className="text-base font-medium leading-none">
-                  {user?.name}
+            <div className="flex items-center gap-4 p-3 bg-slate-50 rounded-2xl mb-2">
+              <Avatar className="h-12 w-12 border-2 border-white shadow-sm">
+                <AvatarImage src={user?.avatar || avatarUrl} alt={user?.name} />
+                <AvatarFallback className="bg-primary text-primary-foreground font-bold">
+                  {user?.name?.charAt(0).toUpperCase() || "U"}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex flex-col min-w-0">
+                <p className="text-base font-semibold text-slate-900 truncate">
+                  {user?.name || "User Name"}
                 </p>
-                <p className="text-sm leading-none text-muted-foreground">
-                  {user?.email}
+                <p className="text-xs text-slate-500 truncate mt-0.5">
+                  {user?.email || "user@example.com"}
                 </p>
-                <div className="pt-2">
-                  <Badge
-                    variant={
-                      user?.role === "Admin"
-                        ? "destructive"
-                        : user?.role === "Lecturer"
-                          ? "default"
-                          : "secondary"
-                    }
-                    className="rounded-full px-3"
-                  >
-                    {user?.role}
-                  </Badge>
-                </div>
               </div>
-            </DropdownMenuLabel>
-            <DropdownMenuSeparator className="bg-white/20" />
-            <DropdownMenuLabel className="text-xs text-muted-foreground px-3 py-2">
-              Switch Role (Testing)
-            </DropdownMenuLabel>
-            <DropdownMenuItem
-              className="rounded-xl cursor-pointer"
-              onClick={() => switchRole("Student")}
+            </div>
+
+            <DropdownMenuSeparator className="bg-slate-100 my-2" />
+            
+            <DropdownMenuItem 
+              className="rounded-xl cursor-pointer hover:bg-slate-50 text-slate-700 mb-1"
+              onClick={() => navigate("/profile")}
             >
-              Student View
+              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-100/50 text-slate-500 shrink-0">
+                <User className="h-4 w-4" />
+              </div>
+              <span className="font-medium">My Profile</span>
             </DropdownMenuItem>
-            <DropdownMenuItem
-              className="rounded-xl cursor-pointer"
-              onClick={() => switchRole("Lecturer")}
+
+            <DropdownMenuItem 
+              className="rounded-xl cursor-pointer hover:bg-slate-50 text-slate-700 mb-1"
+              onClick={() => navigate("/settings")}
             >
-              Lecturer View
+              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-100/50 text-slate-500 shrink-0">
+                <Settings className="h-4 w-4" />
+              </div>
+              <span className="font-medium">Settings</span>
             </DropdownMenuItem>
-            <DropdownMenuItem
-              className="rounded-xl cursor-pointer"
-              onClick={() => switchRole("Admin")}
-            >
-              Admin View
+
+            <DropdownMenuItem className="rounded-xl cursor-pointer hover:bg-slate-50 text-slate-700 mb-2">
+              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-100/50 text-slate-500 shrink-0">
+                <LifeBuoy className="h-4 w-4" />
+              </div>
+              <span className="font-medium">Help Center</span>
             </DropdownMenuItem>
+
+            <DropdownMenuSeparator className="bg-slate-100 my-2" />
+            
             <DropdownMenuItem
-              className="rounded-xl cursor-pointer text-destructive focus:text-destructive"
+              className="rounded-xl cursor-pointer text-red-600 hover:text-red-700 hover:bg-red-50 mt-1"
               onClick={handleLogout}
               disabled={logoutMutation.isPending}
             >
-              {logoutMutation.isPending ? "Logging out..." : "Log out"}
+              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-red-100/50 shrink-0">
+                <LogOut className="h-4 w-4" />
+              </div>
+              <span className="font-semibold">{logoutMutation.isPending ? "Logging out..." : "Log out"}</span>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
